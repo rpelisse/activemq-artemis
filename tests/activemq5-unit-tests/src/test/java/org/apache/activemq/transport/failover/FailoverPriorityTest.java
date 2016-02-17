@@ -19,6 +19,7 @@ package org.apache.activemq.transport.failover;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.activemq.ActiveMQConnection;
@@ -49,11 +50,16 @@ public class FailoverPriorityTest extends OpenwireArtemisBaseTest {
    private final List<ActiveMQConnection> connections = new ArrayList<ActiveMQConnection>();
    private EmbeddedJMS[] servers = new EmbeddedJMS[3];
    private String clientUrl;
+   private Map<String, String> params = new HashMap<String, String>();
 
    @Before
    public void setUp() throws Exception {
       urls.put(0, BROKER_A_CLIENT_TC_ADDRESS);
       urls.put(1, BROKER_B_CLIENT_TC_ADDRESS);
+      params.clear();
+      params.put("rebalanceClusterClients", "true");
+      params.put("updateClusterClients", "true");
+      params.put("updateClusterClientsOnRemove", "true");
    }
 
    @After
@@ -136,7 +142,7 @@ public class FailoverPriorityTest extends OpenwireArtemisBaseTest {
 
    @Test
    public void testThreeBrokers() throws Exception {
-      commonSetup();
+      setupThreeBrokers();
       Thread.sleep(1000);
 
       setClientUrl("failover:(" + BROKER_A_CLIENT_TC_ADDRESS + "," + BROKER_B_CLIENT_TC_ADDRESS + "," + BROKER_C_CLIENT_TC_ADDRESS + ")?randomize=false&priorityBackup=true&initialReconnectDelay=1000&useExponentialBackOff=false");
@@ -262,11 +268,15 @@ public class FailoverPriorityTest extends OpenwireArtemisBaseTest {
       }
    }
 
-   //default setup for most tests
-   private void commonSetup() throws Exception {
-      Configuration config0 = createConfig("127.0.0.1", 0);
-      Configuration config1 = createConfig("127.0.0.1", 1);
-      Configuration config2 = createConfig("127.0.0.1", 2);
+   private void setupThreeBrokers() throws Exception {
+
+      params.put("rebalanceClusterClients", "false");
+      params.put("updateClusterClients", "false");
+      params.put("updateClusterClientsOnRemove", "false");
+
+      Configuration config0 = createConfig("127.0.0.1", 0, params);
+      Configuration config1 = createConfig("127.0.0.1", 1, params);
+      Configuration config2 = createConfig("127.0.0.1", 2, params);
 
       deployClusterConfiguration(config0, 1, 2);
       deployClusterConfiguration(config1, 0, 2);

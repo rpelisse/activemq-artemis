@@ -148,6 +148,12 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
 
    private final ScheduledExecutorService scheduledPool;
 
+   //bean properties
+   //http://activemq.apache.org/failover-transport-reference.html
+   private boolean rebalanceClusterClients = false;
+   private boolean updateClusterClients = false;
+   private boolean updateClusterClientsOnRemove = false;
+
    public OpenWireProtocolManager(OpenWireProtocolManagerFactory factory, ActiveMQServer server) {
       this.factory = factory;
       this.server = server;
@@ -189,7 +195,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
       }
 
       for (OpenWireConnection c : this.connections) {
-         ConnectionControl control = newConnectionControl(c.isRebalance());
+         ConnectionControl control = newConnectionControl();
          c.updateClient(control);
       }
    }
@@ -422,13 +428,13 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
       return brokerName;
    }
 
-   protected ConnectionControl newConnectionControl(boolean rebalance) {
+   protected ConnectionControl newConnectionControl() {
       ConnectionControl control = new ConnectionControl();
 
-      String uri = generateMembersURI(rebalance);
+      String uri = generateMembersURI(rebalanceClusterClients);
       control.setConnectedBrokers(uri);
 
-      control.setRebalanceConnection(rebalance);
+      control.setRebalanceConnection(rebalanceClusterClients);
       return control;
    }
 
@@ -813,5 +819,29 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
       //cluster support yet to support
       brokerInfo.setPeerBrokerInfos(null);
       connection.dispatchAsync(brokerInfo);
+   }
+
+   public void setRebalanceClusterClients(boolean rebalance) {
+      this.rebalanceClusterClients = rebalance;
+   }
+
+   public boolean isRebalanceClusterClients() {
+      return this.rebalanceClusterClients;
+   }
+
+   public void setUpdateClusterClients(boolean updateClusterClients) {
+      this.updateClusterClients = updateClusterClients;
+   }
+
+   public boolean isUpdateClusterClients() {
+      return this.updateClusterClients;
+   }
+
+   public  void setUpdateClusterClientsOnRemove(boolean updateClusterClientsOnRemove) {
+      this.updateClusterClientsOnRemove = updateClusterClientsOnRemove;
+   }
+
+   public boolean isUpdateClusterClientsOnRemove() {
+      return this.updateClusterClientsOnRemove;
    }
 }

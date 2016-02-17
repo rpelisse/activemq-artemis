@@ -19,7 +19,9 @@ package org.apache.activemq.broker.artemiswrapper;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.activemq.artemis.api.core.management.ObjectNameBuilder;
@@ -31,6 +33,8 @@ import org.apache.activemq.artemis.core.server.JournalType;
 import org.apache.activemq.artemis.core.settings.impl.AddressSettings;
 import org.apache.activemq.artemis.jms.server.config.impl.JMSConfigurationImpl;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
+import org.apache.activemq.artemis.utils.uri.URISchema;
+import org.apache.activemq.artemis.utils.uri.URISupport;
 import org.apache.activemq.broker.BrokerService;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -88,7 +92,7 @@ public class OpenwireArtemisBaseTest {
    public String CLUSTER_PASSWORD = "OPENWIRECLUSTER";
 
    protected Configuration createConfig(final int serverID) throws Exception {
-      return createConfig("localhost", serverID);
+      return createConfig("localhost", serverID, Collections.EMPTY_MAP);
    }
 
    protected Configuration createConfig(final String hostAddress, final int serverID, final int port) throws Exception {
@@ -111,6 +115,10 @@ public class OpenwireArtemisBaseTest {
    }
 
    protected Configuration createConfig(final String hostAddress, final int serverID) throws Exception {
+      return createConfig(hostAddress, serverID, Collections.EMPTY_MAP);
+   }
+
+   protected Configuration createConfig(final String hostAddress, final int serverID, Map<String, String> params) throws Exception {
       ConfigurationImpl configuration = new ConfigurationImpl().setJMXManagementEnabled(false).
               setSecurityEnabled(false).setJournalMinFiles(2).setJournalFileSize(1000 * 1024).setJournalType(JournalType.NIO).
               setJournalDirectory(getJournalDir(serverID, false)).
@@ -123,7 +131,7 @@ public class OpenwireArtemisBaseTest {
 
       configuration.addAddressesSetting("#", new AddressSettings().setAutoCreateJmsQueues(true).setAutoDeleteJmsQueues(true));
 
-      configuration.addAcceptorConfiguration("netty", newURI(hostAddress, serverID));
+      configuration.addAcceptorConfiguration("netty", newURI(hostAddress, serverID) + "?" + URISupport.createQueryString(params));
       configuration.addConnectorConfiguration("netty-connector", newURI(hostAddress, serverID));
 
       return configuration;
@@ -171,8 +179,12 @@ public class OpenwireArtemisBaseTest {
       return "tcp://" + localhostAddress + ":" + (61616 + serverID);
    }
 
-   protected static String newURIwithPort(String localhostAddress, int port) {
-      return "tcp://" + localhostAddress + ":" + port;
+   protected static String newURIwithPort(String localhostAddress, int port) throws Exception {
+      return newURIwithPort(localhostAddress, port, Collections.EMPTY_MAP);
+   }
+
+   protected static String newURIwithPort(String localhostAddress, int port, Map<String, String> params) throws Exception {
+      return "tcp://" + localhostAddress + ":" + port + "?" + URISupport.createQueryString(params);
    }
 
    public static JMSServerControl createJMSServerControl(final MBeanServer mbeanServer) throws Exception {

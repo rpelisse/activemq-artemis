@@ -65,9 +65,15 @@ public class FailoverComplexClusterTest extends OpenwireArtemisBaseTest {
 
    //default setup for most tests
    private void commonSetup() throws Exception {
-      Configuration config0 = createConfig(0);
-      Configuration config1 = createConfig(1);
-      Configuration config2 = createConfig(2);
+      Map<String, String> params = new HashMap<String, String>();
+
+      params.put("rebalanceClusterClients", "true");
+      params.put("updateClusterClients", "true");
+      params.put("updateClusterClientsOnRemove", "true");
+
+      Configuration config0 = createConfig("localhost", 0, params);
+      Configuration config1 = createConfig("localhost", 1, params);
+      Configuration config2 = createConfig("localhost", 2, params);
 
       deployClusterConfiguration(config0, 1, 2);
       deployClusterConfiguration(config1, 0, 2);
@@ -248,9 +254,9 @@ public class FailoverComplexClusterTest extends OpenwireArtemisBaseTest {
    @Test
    public void testFailOverWithUpdateClientsOnRemove() throws Exception {
       // Broker A
-      Configuration config0 = createConfig(0, "?rebalance-cluster-client=true&update-cluster-clients=true&update-cluster-clients-on-remove=true");
+      Configuration config0 = createConfig(0, "?rebalanceClusterClients=true&updateClusterClients=true&updateClusterClientsOnRemove=true");
       // Broker B
-      Configuration config1 = createConfig(1, "?rebalance-cluster-client=true&update-cluster-clients=true&update-cluster-clients-on-remove=true");
+      Configuration config1 = createConfig(1, "?rebalanceClusterClients=true&updateClusterClients=true&updateClusterClientsOnRemove=true");
 
       deployClusterConfiguration(config0, 1);
       deployClusterConfiguration(config1, 0);

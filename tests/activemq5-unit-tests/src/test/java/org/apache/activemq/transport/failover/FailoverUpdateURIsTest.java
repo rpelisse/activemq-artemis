@@ -18,6 +18,8 @@ package org.apache.activemq.transport.failover;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.jms.Connection;
@@ -117,7 +119,9 @@ public class FailoverUpdateURIsTest extends OpenwireArtemisBaseTest {
 
    @Test
    public void testAutoUpdateURIs() throws Exception {
-      Configuration config0 = createConfig(0);
+      Map<String, String> params = new HashMap<String, String>();
+      params.put("updateClusterClients", "true");
+      Configuration config0 = createConfig("localhost", 0, params);
       deployClusterConfiguration(config0, 10);
       server0 = new EmbeddedJMS().setConfiguration(config0).setJmsConfiguration(new JMSConfigurationImpl());
       server0.start();

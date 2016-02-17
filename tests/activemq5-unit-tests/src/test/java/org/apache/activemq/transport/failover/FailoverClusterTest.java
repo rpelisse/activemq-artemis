@@ -22,8 +22,10 @@ import javax.jms.Queue;
 import javax.jms.Session;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -50,8 +52,13 @@ public class FailoverClusterTest extends OpenwireArtemisBaseTest {
 
    @Before
    public void setUp() throws Exception {
-      Configuration config1 = createConfig(1);
-      Configuration config2 = createConfig(2);
+      Map<String, String> params = new HashMap<String, String>();
+
+      params.put("rebalanceClusterClients", "true");
+      params.put("updateClusterClients", "true");
+
+      Configuration config1 = createConfig("localhost", 1, params);
+      Configuration config2 = createConfig("localhost", 2, params);
 
       deployClusterConfiguration(config1, 2);
       deployClusterConfiguration(config2, 1);

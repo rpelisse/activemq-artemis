@@ -55,7 +55,6 @@ import org.apache.activemq.artemis.spi.core.remoting.Acceptor;
 import org.apache.activemq.artemis.spi.core.remoting.Connection;
 import org.apache.activemq.artemis.spi.core.remoting.ReadyListener;
 import org.apache.activemq.artemis.utils.ConcurrentHashSet;
-import org.apache.activemq.artemis.utils.ConfigurationHelper;
 import org.apache.activemq.command.ActiveMQDestination;
 import org.apache.activemq.command.BrokerInfo;
 import org.apache.activemq.command.Command;
@@ -153,10 +152,6 @@ public class OpenWireConnection implements RemotingConnection, CommandVisitor, S
 
    private String defaultSocketURIString;
 
-   private boolean rebalance;
-   private boolean updateClusterClients;
-   private boolean updateClusterClientsOnRemove;
-
    public OpenWireConnection(Acceptor acceptorUsed,
                              Connection connection,
                              OpenWireProtocolManager openWireProtocolManager,
@@ -167,12 +162,6 @@ public class OpenWireConnection implements RemotingConnection, CommandVisitor, S
       this.wireFormat = wf;
       this.creationTime = System.currentTimeMillis();
       this.defaultSocketURIString = connection.getLocalAddress();
-
-      //Clebert: These are parameters specific to openwire cluster with defaults as specified at
-      //http://activemq.apache.org/failover-transport-reference.html
-      rebalance = ConfigurationHelper.getBooleanProperty("rebalance-cluster-clients", true, acceptorUsed.getConfiguration());
-      updateClusterClients = ConfigurationHelper.getBooleanProperty("update-cluster-clients", true, acceptorUsed.getConfiguration());
-      updateClusterClientsOnRemove = ConfigurationHelper.getBooleanProperty("update-cluster-clients-on-remove", true, acceptorUsed.getConfiguration());
    }
 
    @Override
@@ -198,10 +187,6 @@ public class OpenWireConnection implements RemotingConnection, CommandVisitor, S
          return null;
       }
       return info.getPassword();
-   }
-
-   public boolean isRebalance() {
-      return rebalance;
    }
 
    private ConnectionInfo getConnectionInfo() {
@@ -539,9 +524,9 @@ public class OpenWireConnection implements RemotingConnection, CommandVisitor, S
          Response resp = new ExceptionResponse(e);
          return resp;
       }
-      if (info.isManageable() && this.isUpdateClusterClients()) {
+      if (info.isManageable() && protocolManager.isUpdateClusterClients()) {
          // send ConnectionCommand
-         ConnectionControl command = protocolManager.newConnectionControl(rebalance);
+         ConnectionControl command = protocolManager.newConnectionControl();
          command.setFaultTolerant(protocolManager.isFaultTolerantConfiguration());
          if (info.isFailoverReconnect()) {
             command.setRebalanceConnection(false);
@@ -1274,14 +1259,10 @@ public class OpenWireConnection implements RemotingConnection, CommandVisitor, S
 
    public void updateClient(ConnectionControl control) {
       //      if (!destroyed && context.isFaultTolerant()) {
-      if (updateClusterClients) {
+      if (protocolManager.isUpdateClusterClients()) {
          dispatchAsync(control);
       }
       //      }
-   }
-
-   public boolean isUpdateClusterClients() {
-      return updateClusterClients;
    }
 
    public AMQConnectionContext initContext(ConnectionInfo info) {
