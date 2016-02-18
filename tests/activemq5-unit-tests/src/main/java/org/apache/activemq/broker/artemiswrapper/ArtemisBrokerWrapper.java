@@ -29,9 +29,12 @@ import org.apache.activemq.artemis.api.core.SimpleString;
 import org.apache.activemq.artemis.api.core.TransportConfiguration;
 import org.apache.activemq.artemis.core.config.Configuration;
 import org.apache.activemq.artemis.core.config.impl.SecurityConfiguration;
+import org.apache.activemq.artemis.core.postoffice.Binding;
 import org.apache.activemq.artemis.core.registry.JndiBindingRegistry;
 import org.apache.activemq.artemis.core.remoting.impl.netty.TransportConstants;
 import org.apache.activemq.artemis.core.security.Role;
+import org.apache.activemq.artemis.core.server.Queue;
+import org.apache.activemq.artemis.core.server.impl.QueueImpl;
 import org.apache.activemq.artemis.core.settings.impl.AddressFullMessagePolicy;
 import org.apache.activemq.artemis.core.settings.impl.AddressSettings;
 import org.apache.activemq.artemis.core.settings.impl.SlowConsumerPolicy;
@@ -256,5 +259,16 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
             }
          }
       }
+   }
+
+   public long getAMQueueMessageCount(String physicalName) {
+      long count = 0;
+      String qname = "jms.queue." + physicalName;
+      Binding binding = server.getPostOffice().getBinding(new SimpleString(qname));
+      if (binding != null) {
+         QueueImpl q = (QueueImpl) binding.getBindable();
+         count = q.getMessageCount();
+      }
+      return count;
    }
 }

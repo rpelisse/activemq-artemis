@@ -24,6 +24,7 @@ import javax.jms.DeliveryMode;
 
 import junit.framework.Test;
 
+import org.apache.activemq.broker.artemiswrapper.ArtemisBrokerWrapper;
 import org.apache.activemq.command.ActiveMQDestination;
 import org.apache.activemq.command.ActiveMQQueue;
 import org.apache.activemq.command.ActiveMQTopic;
@@ -454,9 +455,13 @@ public class BrokerTest extends BrokerTestSupport {
 
       // Commit the transaction.
       connection1.send(createCommitTransaction1Phase(connectionInfo1, txid));
+      //due to async tx operations, we need some time for message count to go down
+      Thread.sleep(1000);
+      ArtemisBrokerWrapper wrapper = (ArtemisBrokerWrapper) broker.getBroker();
+      long messageCount = wrapper.getAMQueueMessageCount(destination.getPhysicalName());
 
       // The queue should now only have the remaining 2 messages
-      assertEquals(2, countMessagesInQueue(connection1, connectionInfo1, destination));
+      assertEquals(2, messageCount);
    }
 
    public void initCombosForTestConsumerCloseCausesRedelivery() {
@@ -1463,11 +1468,17 @@ public class BrokerTest extends BrokerTestSupport {
       assertNotNull(m);
       assertEquals(m.getMessageId(), message1.getMessageId());
 
-      assertTrue(countMessagesInQueue(connection, connectionInfo, destination) == 2);
+      ArtemisBrokerWrapper wrapper = (ArtemisBrokerWrapper) broker.getBroker();
+      long messageCount = wrapper.getAMQueueMessageCount(destination.getPhysicalName());
+      assertTrue(messageCount == 2);
       connection.send(createAck(consumerInfo, m, 1, MessageAck.DELIVERED_ACK_TYPE));
-      assertTrue(countMessagesInQueue(connection, connectionInfo, destination) == 2);
+      messageCount = wrapper.getAMQueueMessageCount(destination.getPhysicalName());
+      assertTrue(messageCount == 2);
       connection.send(createAck(consumerInfo, m, 1, MessageAck.STANDARD_ACK_TYPE));
-      assertTrue(countMessagesInQueue(connection, connectionInfo, destination) == 1);
+      //give some time for broker to count down
+      Thread.sleep(2000);
+      messageCount = wrapper.getAMQueueMessageCount(destination.getPhysicalName());
+      assertTrue(messageCount == 1);
 
    }
 

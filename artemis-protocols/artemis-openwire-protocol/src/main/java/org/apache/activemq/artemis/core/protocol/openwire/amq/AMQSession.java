@@ -255,6 +255,7 @@ public class AMQSession implements SessionCallback {
       ActiveMQDestination[] actualDestinations = null;
       if (destination.isComposite()) {
          actualDestinations = destination.getCompositeDestinations();
+         messageSend.setOriginalDestination(destination);
       }
       else {
          actualDestinations = new ActiveMQDestination[]{destination};

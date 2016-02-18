@@ -391,6 +391,13 @@ public class OpenWireMessageConverter implements MessageConverter {
          coreMessage.putStringProperty(AMQ_MSG_USER_ID, userId);
       }
       coreMessage.putBooleanProperty(AMQ_MSG_DROPPABLE, messageSend.isDroppable());
+
+      ActiveMQDestination origDest = messageSend.getOriginalDestination();
+      if (origDest != null) {
+         ByteSequence origDestBytes = marshaller.marshal(origDest);
+         origDestBytes.compact();
+         coreMessage.putBytesProperty(AMQ_MSG_ORIG_DESTINATION, origDestBytes.data);
+      }
    }
 
    private static void loadMapIntoProperties(TypedProperties props, Map<String, Object> map) {
