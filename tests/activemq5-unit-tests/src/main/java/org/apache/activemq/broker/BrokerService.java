@@ -53,6 +53,7 @@ import org.apache.activemq.network.NetworkConnector;
 import org.apache.activemq.network.jms.JmsConnector;
 import org.apache.activemq.proxy.ProxyConnector;
 import org.apache.activemq.security.MessageAuthorizationPolicy;
+import org.apache.activemq.spring.SpringSslContext;
 import org.apache.activemq.store.PListStore;
 import org.apache.activemq.store.PersistenceAdapter;
 import org.apache.activemq.store.PersistenceAdapterFactory;
@@ -100,6 +101,7 @@ public class BrokerService implements Service {
    private Throwable startException = null;
    private boolean startAsync = false;
    public Set<Integer> extraConnectors = new HashSet<>();
+   public Set<Integer> sslConnectors = new HashSet<>();
 
    private List<TransportConnector> transportConnectors = new ArrayList<>();
    private File dataDirectoryFile;
@@ -491,6 +493,15 @@ public class BrokerService implements Service {
 
    public void setTransportConnectors(List<TransportConnector> transportConnectors) throws Exception {
       this.transportConnectors = transportConnectors;
+      for (TransportConnector connector : transportConnectors) {
+         if (connector.getUri().getScheme().equals("ssl")) {
+            this.sslConnectors.add(connector.getUri().getPort());
+            System.out.println(this + " added ssl connector: " + connector.getUri().getPort());
+         }
+         else {
+            this.extraConnectors.add(connector.getUri().getPort());
+         }
+      }
    }
 
    public NetworkConnector addNetworkConnector(NetworkConnector connector) throws Exception {
@@ -698,6 +709,14 @@ public class BrokerService implements Service {
 
    public void setSslContext(SslContext sslContext) {
       this.sslContext = sslContext;
+      if (sslContext instanceof SpringSslContext) {
+         SpringSslContext springContext = (SpringSslContext)sslContext;
+         this.SERVER_SIDE_KEYSTORE = springContext.getKeyStore();
+         this.KEYSTORE_PASSWORD = springContext.getKeyStorePassword();
+         this.SERVER_SIDE_TRUSTSTORE = springContext.getTrustStore();
+         this.TRUSTSTORE_PASSWORD = springContext.getTrustStorePassword();
+         this.storeType = springContext.getKeyStoreType();
+      }
    }
 
    public void setPersistenceFactory(PersistenceAdapterFactory persistenceFactory) {

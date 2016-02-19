@@ -33,13 +33,12 @@ import org.apache.activemq.artemis.core.postoffice.Binding;
 import org.apache.activemq.artemis.core.registry.JndiBindingRegistry;
 import org.apache.activemq.artemis.core.remoting.impl.netty.TransportConstants;
 import org.apache.activemq.artemis.core.security.Role;
-import org.apache.activemq.artemis.core.server.Queue;
 import org.apache.activemq.artemis.core.server.impl.QueueImpl;
 import org.apache.activemq.artemis.core.settings.impl.AddressFullMessagePolicy;
 import org.apache.activemq.artemis.core.settings.impl.AddressSettings;
 import org.apache.activemq.artemis.core.settings.impl.SlowConsumerPolicy;
 import org.apache.activemq.artemis.jms.server.impl.JMSServerManagerImpl;
-import org.apache.activemq.artemis.spi.core.security.ActiveMQSecurityManagerImpl;
+import org.apache.activemq.artemis.spi.core.security.ActiveMQJAASSecurityManager;
 import org.apache.activemq.artemiswrapper.ArtemisBrokerHelper;
 import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.broker.region.policy.PolicyEntry;
@@ -82,25 +81,16 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
       commonSettings.setDeadLetterAddress(dla);
       commonSettings.setAutoCreateJmsQueues(true);
 
-      HashMap<String, Object> params = new HashMap<String, Object>();
       if (bservice.extraConnectors.size() == 0) {
          serverConfig.addAcceptorConfiguration("home", "tcp://localhost:61616?protocols=OPENWIRE,CORE");
       }
-      if (this.bservice.enableSsl()) {
-         params.put(TransportConstants.SSL_ENABLED_PROP_NAME, true);
-         params.put(TransportConstants.PORT_PROP_NAME, 61611);
-         params.put(TransportConstants.PROTOCOLS_PROP_NAME, "OPENWIRE");
-         params.put(TransportConstants.KEYSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_KEYSTORE);
-         params.put(TransportConstants.KEYSTORE_PASSWORD_PROP_NAME, bservice.KEYSTORE_PASSWORD);
-         params.put(TransportConstants.KEYSTORE_PROVIDER_PROP_NAME, bservice.storeType);
-         if (bservice.SERVER_SIDE_TRUSTSTORE != null) {
-            params.put(TransportConstants.NEED_CLIENT_AUTH_PROP_NAME, true);
-            params.put(TransportConstants.TRUSTSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_TRUSTSTORE);
-            params.put(TransportConstants.TRUSTSTORE_PASSWORD_PROP_NAME, bservice.TRUSTSTORE_PASSWORD);
-            params.put(TransportConstants.TRUSTSTORE_PROVIDER_PROP_NAME, bservice.storeType);
-         }
-         TransportConfiguration sslTransportConfig = new TransportConfiguration(NETTY_ACCEPTOR_FACTORY, params);
-         serverConfig.getAcceptorConfigurations().add(sslTransportConfig);
+      if (this.bservice.enableSsl() && bservice.sslConnectors.size() == 0) {
+         //default
+         addSSLAcceptor(serverConfig, 61611);
+      }
+
+      for (Integer port : bservice.sslConnectors) {
+         addSSLAcceptor(serverConfig, port);
       }
 
       for (Integer port : bservice.extraConnectors) {
@@ -112,7 +102,7 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
       //extraServerConfig(serverConfig);
 
       if (enableSecurity) {
-         ActiveMQSecurityManagerImpl sm = (ActiveMQSecurityManagerImpl) server.getSecurityManager();
+         ActiveMQJAASSecurityManager sm = (ActiveMQJAASSecurityManager) server.getSecurityManager();
          SecurityConfiguration securityConfig = sm.getConfiguration();
          securityConfig.addRole("openwireSender", "sender");
          securityConfig.addUser("openwireSender", "SeNdEr");
@@ -173,6 +163,24 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
       ArtemisBrokerHelper.setBroker(this.bservice);
       stopped = false;
 
+   }
+
+   private void addSSLAcceptor(Configuration serverConfig, Integer port) {
+      HashMap<String, Object> params = new HashMap<String, Object>();
+      params.put(TransportConstants.SSL_ENABLED_PROP_NAME, true);
+      params.put(TransportConstants.PORT_PROP_NAME, port);
+      params.put(TransportConstants.PROTOCOLS_PROP_NAME, "OPENWIRE");
+      params.put(TransportConstants.KEYSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_KEYSTORE);
+      params.put(TransportConstants.KEYSTORE_PASSWORD_PROP_NAME, bservice.KEYSTORE_PASSWORD);
+      params.put(TransportConstants.KEYSTORE_PROVIDER_PROP_NAME, bservice.storeType);
+      if (bservice.SERVER_SIDE_TRUSTSTORE != null) {
+         params.put(TransportConstants.NEED_CLIENT_AUTH_PROP_NAME, true);
+         params.put(TransportConstants.TRUSTSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_TRUSTSTORE);
+         params.put(TransportConstants.TRUSTSTORE_PASSWORD_PROP_NAME, bservice.TRUSTSTORE_PASSWORD);
+         params.put(TransportConstants.TRUSTSTORE_PROVIDER_PROP_NAME, bservice.storeType);
+      }
+      TransportConfiguration sslTransportConfig = new TransportConfiguration(NETTY_ACCEPTOR_FACTORY, params);
+      serverConfig.getAcceptorConfigurations().add(sslTransportConfig);
    }
 
    private void translatePolicyMap(Configuration serverConfig, PolicyMap policyMap) {
