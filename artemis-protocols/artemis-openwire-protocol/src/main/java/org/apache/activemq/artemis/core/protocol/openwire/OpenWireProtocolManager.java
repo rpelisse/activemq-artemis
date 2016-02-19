@@ -811,7 +811,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
    public void sendBrokerInfo(OpenWireConnection connection) {
       BrokerInfo brokerInfo = new BrokerInfo();
       brokerInfo.setBrokerName(server.getIdentity());
-      brokerInfo.setBrokerId(new BrokerId(server.getNodeID().toString()));
+      brokerInfo.setBrokerId(new BrokerId("" + server.getNodeID()));
       brokerInfo.setPeerBrokerInfos(null);
       brokerInfo.setFaultTolerantConfiguration(false);
       brokerInfo.setBrokerURL(connection.getLocalAddress());
