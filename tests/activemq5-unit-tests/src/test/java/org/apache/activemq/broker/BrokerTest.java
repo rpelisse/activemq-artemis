@@ -102,6 +102,7 @@ public class BrokerTest extends BrokerTestSupport {
       addCombinationValues("deliveryMode", new Object[]{Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
    }
 
+   //https://issues.apache.org/jira/browse/ARTEMIS-384
    public void testQueueBrowserWith2Consumers() throws Exception {
 
       ActiveMQDestination destination = new ActiveMQQueue("TEST");
@@ -684,6 +685,7 @@ public class BrokerTest extends BrokerTestSupport {
       addCombinationValues("durableConsumer", new Object[]{Boolean.TRUE, Boolean.FALSE});
    }
 
+   // https://issues.apache.org/jira/browse/ARTEMIS-402
    public void testTopicRetroactiveConsumerSeeMessagesBeforeCreation() throws Exception {
 
       ActiveMQDestination destination = new ActiveMQTopic("TEST");
@@ -1207,6 +1209,7 @@ public class BrokerTest extends BrokerTestSupport {
       addCombinationValues("deliveryMode", new Object[]{Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
    }
 
+   // https://issues.apache.org/jira/browse/ARTEMIS-402
    public void testTopicNoLocal() throws Exception {
 
       ActiveMQDestination destination = new ActiveMQTopic("TEST");
@@ -1272,6 +1275,7 @@ public class BrokerTest extends BrokerTestSupport {
       addCombinationValues("deliveryMode", new Object[]{Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
    }
 
+   //https://issues.apache.org/jira/browse/ARTEMIS-402
    public void testTopicDispatchIsBroadcast() throws Exception {
 
       ActiveMQDestination destination = new ActiveMQTopic("TEST");

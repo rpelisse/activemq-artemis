@@ -44,10 +44,14 @@ import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.broker.region.policy.PolicyEntry;
 import org.apache.activemq.broker.region.policy.PolicyMap;
 
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+
 public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
 
    protected final Map<String, SimpleString> testQueues = new HashMap<>();
    protected JMSServerManagerImpl jmsServer;
+   protected MBeanServer mbeanServer;
 
    public ArtemisBrokerWrapper(BrokerService brokerService, File temporaryFolder) {
       super(temporaryFolder);
@@ -57,10 +61,16 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
    @Override
    public void start() throws Exception {
       clearDataRecreateServerDirs();
+
+      mbeanServer = MBeanServerFactory.createMBeanServer();
+
       server = createServer(realStore, true);
+      server.setMBeanServer(mbeanServer);
+
       server.getConfiguration().getAcceptorConfigurations().clear();
 
       Configuration serverConfig = server.getConfiguration();
+      serverConfig.setJMXManagementEnabled(true);
 
       Map<String, AddressSettings> addressSettingsMap = serverConfig.getAddressesSettings();
 
@@ -155,11 +165,6 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
 
       server.start();
 
-/*
-         registerConnectionFactory();
-	      mbeanServer = MBeanServerFactory.createMBeanServer();
-*/
-
       ArtemisBrokerHelper.setBroker(this.bservice);
       stopped = false;
 
@@ -174,7 +179,6 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
       params.put(TransportConstants.KEYSTORE_PASSWORD_PROP_NAME, bservice.KEYSTORE_PASSWORD);
       params.put(TransportConstants.KEYSTORE_PROVIDER_PROP_NAME, bservice.storeType);
       if (bservice.SERVER_SIDE_TRUSTSTORE != null) {
-         params.put(TransportConstants.NEED_CLIENT_AUTH_PROP_NAME, true);
          params.put(TransportConstants.TRUSTSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_TRUSTSTORE);
          params.put(TransportConstants.TRUSTSTORE_PASSWORD_PROP_NAME, bservice.TRUSTSTORE_PASSWORD);
          params.put(TransportConstants.TRUSTSTORE_PROVIDER_PROP_NAME, bservice.storeType);
@@ -278,5 +282,9 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
          count = q.getMessageCount();
       }
       return count;
+   }
+
+   public MBeanServer getMbeanServer() {
+      return this.mbeanServer;
    }
 }

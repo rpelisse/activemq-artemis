@@ -109,7 +109,6 @@ public class BrokerService implements Service {
    private PolicyMap destinationPolicy;
    private SystemUsage systemUsage;
 
-   private boolean isClustered = true;
    private final List<NetworkConnector> networkConnectors = new CopyOnWriteArrayList<NetworkConnector>();
 
    private TemporaryFolder tmpfolder;
