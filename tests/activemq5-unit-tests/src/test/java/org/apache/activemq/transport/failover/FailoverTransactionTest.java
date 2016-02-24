@@ -162,7 +162,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
 
       final CountDownLatch commitDoneLatch = new CountDownLatch(1);
       // broker will die on commit reply so this will hang till restart
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             LOG.info("doing async commit...");
             try {
@@ -175,7 +175,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
             commitDoneLatch.countDown();
             LOG.info("done async commit");
          }
-      });
+      }.start();
 
       // will be stopped by the plugin
       brokerStopLatch.await();
@@ -256,7 +256,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
       MessageConsumer consumer = session.createConsumer(destination);
       final CountDownLatch sendDoneLatch = new CountDownLatch(1);
       // broker will die on send reply so this will hang till restart
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             LOG.info("doing async send...");
             try {
@@ -270,7 +270,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
             sendDoneLatch.countDown();
             LOG.info("done async send");
          }
-      });
+      }.start();
 
       // will be stopped by the plugin
       brokerStopLatch.await();
@@ -345,7 +345,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
       MessageConsumer consumer = session.createConsumer(destination);
       final CountDownLatch sendDoneLatch = new CountDownLatch(1);
       // proxy connection will die on send reply so this will hang on failover reconnect till open
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             LOG.info("doing async send...");
             try {
@@ -358,7 +358,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
             sendDoneLatch.countDown();
             LOG.info("done async send");
          }
-      });
+      }.start();
 
       // will be closed by the plugin
       Assert.assertTrue("proxy was closed", proxy.waitUntilClosed(30));
@@ -568,7 +568,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
       final Vector<Message> receivedMessages = new Vector<>();
       final CountDownLatch commitDoneLatch = new CountDownLatch(1);
       final AtomicBoolean gotTransactionRolledBackException = new AtomicBoolean(false);
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             LOG.info("doing async commit after consume...");
             try {
@@ -615,7 +615,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
                e.printStackTrace();
             }
          }
-      });
+      }.start();
 
       // will be stopped by the plugin
       brokerStopLatch.await();
@@ -684,7 +684,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
                            targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processRemoveConsumer",
                            targetLocation = "ENTRY",
-                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.stopBrokerOnCounter($0)")
+                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.stopBrokerOnCounter()")
            }
    )
    public void testPoolingNConsumesAfterReconnect() throws Exception {
@@ -873,7 +873,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
 
       final CountDownLatch commitDone = new CountDownLatch(1);
       // will block pending re-deliveries
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             LOG.info("doing async commit...");
             try {
@@ -883,7 +883,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
             catch (JMSException ignored) {
             }
          }
-      });
+      }.start();
 
       broker.stop();
       broker = createBroker();
@@ -928,7 +928,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
       final Vector<Exception> exceptions = new Vector<>();
 
       // commit may fail if other consumer gets the message on restart
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             LOG.info("doing async commit...");
             try {
@@ -941,7 +941,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
                commitDone.countDown();
             }
          }
-      });
+      }.start();
 
       Assert.assertTrue("commit completed ", commitDone.await(15, TimeUnit.SECONDS));
 
@@ -975,7 +975,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
    public static void holdResponseAndStopBroker(final OpenWireConnection.CommandProcessor context) {
       if (doByteman.get()) {
          context.getContext().setDontSendReponse(true);
-         Executors.newSingleThreadExecutor().execute(new Runnable() {
+         new Thread() {
             public void run() {
                LOG.info("Stopping broker post commit...");
                try {
@@ -988,7 +988,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
                   brokerStopLatch.countDown();
                }
             }
-         });
+         }.start();
       }
    }
 
@@ -997,7 +997,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
          if (firstSend) {
             firstSend = false;
             context.getContext().setDontSendReponse(true);
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
+            new Thread() {
                public void run() {
                   LOG.info("Stopping connection post send...");
                   try {
@@ -1007,15 +1007,15 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
                      e.printStackTrace();
                   }
                }
-            });
+            }.start();
          }
       }
    }
 
-   public static void stopBrokerOnCounter(final AMQConnectionContext context) {
+   public static void stopBrokerOnCounter() {
       if (doByteman.get()) {
          if (count++ == 1) {
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
+            new Thread() {
                public void run() {
                   try {
                      broker.stop();
@@ -1027,7 +1027,7 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
                      brokerStopLatch.countDown();
                   }
                }
-            });
+            }.start();
          }
       }
    }

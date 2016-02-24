@@ -131,7 +131,7 @@ public class FailoverDuplicateTest extends OpenwireArtemisBaseTest {
 
       final CountDownLatch sendDoneLatch = new CountDownLatch(1);
       // broker will die on send reply so this will hang till restart
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          @Override
          public void run() {
             LOG.info("doing async send...");
@@ -145,7 +145,7 @@ public class FailoverDuplicateTest extends OpenwireArtemisBaseTest {
             sendDoneLatch.countDown();
             LOG.info("done async send");
          }
-      });
+      }.start();
 
       Assert.assertTrue("one message got through on time", gotMessageLatch.await(20, TimeUnit.SECONDS));
       // send more messages, blow producer audit
@@ -215,7 +215,7 @@ public class FailoverDuplicateTest extends OpenwireArtemisBaseTest {
       if (doByteman.get()) {
          if (first.compareAndSet(false, true)) {
             context.getContext().setDontSendReponse(true);
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
+            new Thread() {
                @Override
                public void run() {
                   try {
@@ -229,7 +229,7 @@ public class FailoverDuplicateTest extends OpenwireArtemisBaseTest {
                      e.printStackTrace();
                   }
                }
-            });
+            }.start();
          }
       }
    }

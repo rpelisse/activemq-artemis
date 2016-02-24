@@ -180,7 +180,7 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
 
       final CountDownLatch shutdownConsumerAdded = new CountDownLatch(1);
 
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             try {
                LOG.info("add last consumer...");
@@ -204,7 +204,7 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
                e.printStackTrace();
             }
          }
-      });
+      }.start();
 
       brokerStopLatch.await();
       doByteman.set(false);
@@ -272,7 +272,7 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
 
       final CountDownLatch shutdownConsumerAdded = new CountDownLatch(1);
 
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             try {
                LOG.info("add last consumer...");
@@ -284,7 +284,7 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
                e.printStackTrace();
             }
          }
-      });
+      }.start();
 
       // verify interrupt
       assertTrue("add messages dispatched and unconsumed are cleaned up", Wait.waitFor(new Wait.Condition() {
@@ -364,7 +364,7 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
       if (doByteman.get()) {
          if (consumerCount.incrementAndGet() == maxConsumers) {
             context.getContext().setDontSendReponse(true);
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
+            new Thread() {
                public void run() {
                   try {
                      broker.stop();
@@ -374,7 +374,7 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
                      e.printStackTrace();
                   }
                }
-            });
+            }.start();
          }
       }
    }
@@ -383,7 +383,7 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
       if (doByteman.get()) {
          if (consumerCount.incrementAndGet() == maxConsumers + (watchTopicAdvisories.get() ? 1 : 0)) {
             context.getContext().setDontSendReponse(true);
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
+            new Thread() {
                public void run() {
                   try {
                      broker.stop();
@@ -394,7 +394,7 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
                      e.printStackTrace();
                   }
                }
-            });
+            }.start();
          }
       }
    }

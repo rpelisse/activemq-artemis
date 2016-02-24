@@ -139,7 +139,7 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
       });
 
       // may block if broker shutodwn happens quickly
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             LOG.info("producer started");
             try {
@@ -153,9 +153,9 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
             }
             LOG.info("producer done");
          }
-      });
+      }.start();
 
-      // will be stopped by the plugin
+   // will be stopped by the plugin
       brokerStopLatch.await();
       server.stop();
       server = createBroker();
@@ -253,7 +253,7 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
       });
 
       // may block if broker shutdown happens quickly
-      Executors.newSingleThreadExecutor().execute(new Runnable() {
+      new Thread() {
          public void run() {
             LOG.info("producer started");
             try {
@@ -267,7 +267,7 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
             }
             LOG.info("producer done");
          }
-      });
+      }.start();
 
       // will be stopped by the plugin
       brokerStopLatch.await();
@@ -364,7 +364,7 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
 
    public static void stopServerInTransaction() {
       if (doByteman.get()) {
-         Executors.newSingleThreadExecutor().execute(new Runnable() {
+         new Thread() {
             public void run() {
                LOG.info("Stopping broker in transaction...");
                try {
@@ -377,7 +377,7 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
                   brokerStopLatch.countDown();
                }
             }
-         });
+         }.start();
       }
    }
 }
