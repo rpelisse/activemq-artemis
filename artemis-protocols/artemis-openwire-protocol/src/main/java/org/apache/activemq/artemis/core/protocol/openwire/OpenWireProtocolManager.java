@@ -280,42 +280,6 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
 
    }
 
-   public void sendReply(final OpenWireConnection connection, final Command command) {
-      server.getStorageManager().afterCompleteOperations(new IOCallback() {
-         @Override
-         public void onError(final int errorCode, final String errorMessage) {
-            ActiveMQServerLogger.LOGGER.errorProcessingIOCallback(errorCode, errorMessage);
-         }
-
-         @Override
-         public void done() {
-            send(connection, command);
-         }
-      });
-   }
-
-   public boolean send(final OpenWireConnection connection, final Command command) {
-      if (ActiveMQServerLogger.LOGGER.isTraceEnabled()) {
-         ActiveMQServerLogger.LOGGER.trace("sending " + command);
-      }
-      synchronized (connection) {
-         if (connection.isDestroyed()) {
-            return false;
-         }
-
-         try {
-            connection.physicalSend(command);
-         }
-         catch (Exception e) {
-            return false;
-         }
-         catch (Throwable t) {
-            return false;
-         }
-         return true;
-      }
-   }
-
    public void addConnection(OpenWireConnection connection, ConnectionInfo info) throws Exception {
       String username = info.getUserName();
       String password = info.getPassword();

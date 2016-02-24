@@ -22,9 +22,7 @@ import javax.jms.JMSSecurityException;
 import javax.jms.ResourceAllocationException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -36,13 +34,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.activemq.artemis.api.core.ActiveMQBuffer;
-import org.apache.activemq.artemis.api.core.ActiveMQBuffers;
 import org.apache.activemq.artemis.api.core.ActiveMQException;
 import org.apache.activemq.artemis.api.core.ActiveMQNonExistentQueueException;
 import org.apache.activemq.artemis.api.core.ActiveMQSecurityException;
-import org.apache.activemq.artemis.core.protocol.openwire.OpenWireProtocolManager;
-import org.apache.activemq.artemis.core.protocol.openwire.OpenWireUtil;
-import org.apache.activemq.artemis.core.protocol.openwire.SendingResult;
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQCompositeConsumerBrokerExchange;
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQConnectionContext;
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQConsumer;
@@ -58,7 +52,6 @@ import org.apache.activemq.artemis.spi.core.protocol.AbstractRemotingConnection;
 import org.apache.activemq.artemis.spi.core.protocol.RemotingConnection;
 import org.apache.activemq.artemis.spi.core.remoting.Acceptor;
 import org.apache.activemq.artemis.spi.core.remoting.Connection;
-import org.apache.activemq.artemis.spi.core.remoting.ReadyListener;
 import org.apache.activemq.artemis.utils.ConcurrentHashSet;
 import org.apache.activemq.command.ActiveMQDestination;
 import org.apache.activemq.command.BrokerInfo;
@@ -104,7 +97,6 @@ import org.apache.activemq.wireformat.WireFormat;
 
 /**
  * Represents an activemq connection.
- * ToDo: extends AbstractRemotingConnection
  */
 public class OpenWireConnection extends AbstractRemotingConnection implements SecurityAuth {
 
@@ -214,7 +206,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
             info.setResponseRequired(false);
             // if we don't respond to KeepAlive commands then the client will think the server is dead and timeout
             // for some reason KeepAliveInfo.isResponseRequired() is always false
-            protocolManager.sendReply(this, info);
+            sendCommand(info);
          }
          else {
             Response response = null;
@@ -333,7 +325,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
    // throw a WireFormatInfo to the peer
    public void init() {
       WireFormatInfo info = wireFormat.getPreferedWireFormatInfo();
-      protocolManager.send(this, info);
+      sendCommand(info);
    }
 
    public ConnectionState getState() {
@@ -536,7 +528,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
          m.setBrokerOutTime(endTime);
       }
 
-      protocolManager.send(this, dispatch);
+      sendCommand(dispatch);
    }
 
    public WireFormat getMarshaller() {
@@ -577,7 +569,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
       destroyed = true;
 
-      //before closing transport, send the last response if any
+      //before closing transport, sendCommand the last response if any
       Command command = context.getLastCommand();
       if (command != null && command.isResponseRequired()) {
          Response lastResponse = new Response();
@@ -687,6 +679,29 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       context.setFaultTolerant(info.isFaultTolerant());
       context.setReconnect(true);
       context.incRefCount();
+   }
+
+   /** This will answer with commands to the client */
+   public boolean sendCommand(final Command command) {
+      if (ActiveMQServerLogger.LOGGER.isTraceEnabled()) {
+         ActiveMQServerLogger.LOGGER.trace("sending " + command);
+      }
+      synchronized (this) {
+         if (isDestroyed()) {
+            return false;
+         }
+
+         try {
+            physicalSend(command);
+         }
+         catch (Exception e) {
+            return false;
+         }
+         catch (Throwable t) {
+            return false;
+         }
+         return true;
+      }
    }
 
    // This will listen for commands throught the protocolmanager
