@@ -63,8 +63,8 @@ import org.apache.activemq.artemis.spi.core.protocol.SessionCallback;
 import org.apache.activemq.wireformat.WireFormat;
 
 public class AMQSession implements SessionCallback {
-   private AMQServerSession coreSession;
    private ConnectionInfo connInfo;
+   private AMQServerSession coreSession;
    private SessionInfo sessInfo;
    private ActiveMQServer server;
    private OpenWireConnection connection;
@@ -91,6 +91,7 @@ public class AMQSession implements SessionCallback {
                      OpenWireProtocolManager manager) {
       this.connInfo = connInfo;
       this.sessInfo = sessInfo;
+
       this.server = server;
       this.connection = connection;
       this.scheduledPool = scheduledPool;
@@ -107,7 +108,7 @@ public class AMQSession implements SessionCallback {
       // now
 
       try {
-         coreSession = (AMQServerSession) server.createSession(name, username, password, minLargeMessageSize, connection, true, false, false, false, null, this, new AMQServerSessionFactory(), true);
+         coreSession = (AMQServerSession) server.createSession(name, username, password, minLargeMessageSize, connection, true, false, false, false, null, this, AMQServerSessionFactory.getInstance(), true);
 
          long sessionId = sessInfo.getSessionId().getValue();
          if (sessionId == -1) {
@@ -144,6 +145,7 @@ public class AMQSession implements SessionCallback {
       }
       connection.addConsumerBrokerExchange(info.getConsumerId(), amqSession, consumerMap);
 
+      // TODO: This is wrong. We should only start when the client starts
       coreSession.start();
       started.set(true);
    }
@@ -276,6 +278,9 @@ public class AMQSession implements SessionCallback {
          coreMsg.setAddress(address);
 
          PagingStoreImpl store = (PagingStoreImpl) server.getPagingManager().getPageStore(address);
+
+
+         // TODO: Improve this, tested with ProducerFlowControlSendFailTest
          if (store.isFull()) {
             result.setBlockNextSend(true);
             result.setBlockPagingStore(store);
@@ -521,8 +526,12 @@ public class AMQSession implements SessionCallback {
       }
    }
 
+   // TODO: remove this, we should do the same as we do on core for blocking
    public void blockingWaitForSpace(AMQProducerBrokerExchange producerExchange,
                                     SendingResult result) throws IOException {
+
+
+      new Exception("blocking").printStackTrace();
       long start = System.currentTimeMillis();
       long nextWarn = start;
       producerExchange.blockingOnFlowControl(true);

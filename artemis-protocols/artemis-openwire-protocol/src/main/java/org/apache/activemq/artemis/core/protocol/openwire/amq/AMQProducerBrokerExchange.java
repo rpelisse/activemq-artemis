@@ -29,8 +29,6 @@ public class AMQProducerBrokerExchange {
    private ProducerState producerState;
    private boolean mutable = true;
    private AtomicLong lastSendSequenceNumber = new AtomicLong(-1);
-   private boolean auditProducerSequenceIds;
-   private boolean isNetworkProducer;
    private final FlowControlInfo flowControlInfo = new FlowControlInfo();
 
    public AMQProducerBrokerExchange() {
@@ -92,29 +90,34 @@ public class AMQProducerBrokerExchange {
     * @return false if message should be ignored as a duplicate
     */
    public boolean canDispatch(Message messageSend) {
+      // TODO: auditProduceSequenceIds is never true
       boolean canDispatch = true;
-      if (auditProducerSequenceIds && messageSend.isPersistent()) {
-         final long producerSequenceId = messageSend.getMessageId().getProducerSequenceId();
-         if (isNetworkProducer) {
-            // messages are multiplexed on this producer so we need to query the
-            // persistenceAdapter
-            long lastStoredForMessageProducer = getStoredSequenceIdForMessage(messageSend.getMessageId());
-            if (producerSequenceId <= lastStoredForMessageProducer) {
-               canDispatch = false;
-            }
-         }
-         else if (producerSequenceId <= lastSendSequenceNumber.get()) {
-            canDispatch = false;
-            if (messageSend.isInTransaction()) {
-            }
-            else {
-            }
-         }
-         else {
-            // track current so we can suppress duplicates later in the stream
-            lastSendSequenceNumber.set(producerSequenceId);
-         }
-      }
+      //TODO: DEAD CODE
+//      if (auditProducerSequenceIds && messageSend.isPersistent()) {
+//         final long producerSequenceId = messageSend.getMessageId().getProducerSequenceId();
+//         if (isNetworkProducer) {
+//            // messages are multiplexed on this producer so we need to query the
+//            // persistenceAdapter
+//            long lastStoredForMessageProducer = getStoredSequenceIdForMessage(messageSend.getMessageId());
+//            if (producerSequenceId <= lastStoredForMessageProducer) {
+//               canDispatch = false;
+//            }
+//         }
+//         else if (producerSequenceId <= lastSendSequenceNumber.get()) {
+//            canDispatch = false;
+//            // TODO: WHAT IS THIS?
+//            if (messageSend.isInTransaction()) {
+//
+//
+//            }
+//            else {
+//            }
+//         }
+//         else {
+//            // track current so we can suppress duplicates later in the stream
+//            lastSendSequenceNumber.set(producerSequenceId);
+//         }
+//      }
       return canDispatch;
    }
 

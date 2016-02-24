@@ -219,7 +219,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
    @Override
    public ConnectionEntry createConnectionEntry(Acceptor acceptorUsed, Connection connection) {
       OpenWireFormat wf = (OpenWireFormat) wireFactory.createWireFormat();
-      OpenWireConnection owConn = new OpenWireConnection(acceptorUsed, connection, this, wf);
+      OpenWireConnection owConn = new OpenWireConnection(acceptorUsed, connection,  server.getExecutorFactory().getExecutor(), this, wf);
       owConn.init();
 
       // TODO CLEBERT What is this constant here? we should get it from TTL initial pings
@@ -506,9 +506,6 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
 
          ActiveMQDestination destination = info.getDestination();
          if (destination != null && !AdvisorySupport.isAdvisoryTopic(destination)) {
-            if (theConn.getProducerCount() >= theConn.getMaximumProducersAllowedPerConnection()) {
-               throw new IllegalStateException("Can't add producer on connection " + connectionId + ": at maximum limit: " + theConn.getMaximumProducersAllowedPerConnection());
-            }
             if (destination.isQueue()) {
                OpenWireUtil.validateDestination(destination, amqSession);
             }
@@ -549,12 +546,6 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
       }
       // Avoid replaying dup commands
       if (!ss.getConsumerIds().contains(info.getConsumerId())) {
-         ActiveMQDestination destination = info.getDestination();
-         if (destination != null && !AdvisorySupport.isAdvisoryTopic(destination)) {
-            if (theConn.getConsumerCount() >= theConn.getMaximumConsumersAllowedPerConnection()) {
-               throw new IllegalStateException("Can't add consumer on connection " + connectionId + ": at maximum limit: " + theConn.getMaximumConsumersAllowedPerConnection());
-            }
-         }
 
          AMQSession amqSession = sessions.get(sessionId);
          if (amqSession == null) {
@@ -760,6 +751,9 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, No
       transactions.remove(xid);
    }
 
+   /**
+    * TODO: remove this, use the regular ResourceManager from the Server's
+    * */
    public void registerTx(TransactionId txId, AMQSession amqSession) {
       transactions.put(txId, amqSession);
    }
