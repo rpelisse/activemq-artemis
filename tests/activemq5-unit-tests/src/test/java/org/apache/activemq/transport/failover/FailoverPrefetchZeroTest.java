@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection;
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQConnectionContext;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
 import org.apache.activemq.broker.artemiswrapper.OpenwireArtemisBaseTest;
@@ -77,11 +78,10 @@ public class FailoverPrefetchZeroTest extends OpenwireArtemisBaseTest {
    @BMRules(
       rules = {@BMRule(
          name = "set no return response and stop the broker",
-         targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+         targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
          targetMethod = "processMessagePull",
          targetLocation = "ENTRY",
-         binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-         action = "org.apache.activemq.transport.failover.FailoverPrefetchZeroTest.holdResponseAndStopBroker(context)")})
+         action = "org.apache.activemq.transport.failover.FailoverPrefetchZeroTest.holdResponseAndStopBroker($0)")})
    public void testPrefetchZeroConsumerThroughRestart() throws Exception {
       broker = createBroker();
       broker.start();
@@ -141,9 +141,10 @@ public class FailoverPrefetchZeroTest extends OpenwireArtemisBaseTest {
       producer.close();
    }
 
-   public static void holdResponseAndStopBroker(final AMQConnectionContext context) {
+   public static void holdResponseAndStopBroker(final OpenWireConnection.CommandProcessor context) {
+      new Exception("trace").printStackTrace();
       if (doByteman.get()) {
-         context.setDontSendReponse(true);
+         context.getContext().setDontSendReponse(true);
          pullDone.countDown();
          Executors.newSingleThreadExecutor().execute(new Runnable() {
             public void run() {

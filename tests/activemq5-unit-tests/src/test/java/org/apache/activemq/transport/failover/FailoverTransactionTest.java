@@ -20,6 +20,7 @@ import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.ActiveMQMessageConsumer;
 import org.apache.activemq.AutoFailTestSupport;
+import org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection;
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQConnectionContext;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
 import org.apache.activemq.broker.artemiswrapper.OpenwireArtemisBaseTest;
@@ -137,11 +138,10 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processCommitTransactionOnePhase",
                            targetLocation = "EXIT",
-                           binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.holdResponseAndStopBroker(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.holdResponseAndStopBroker($0)")
            }
    )
    public void testFailoverCommitReplyLost() throws Exception {
@@ -233,11 +233,11 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processMessage",
                            targetLocation = "EXIT",
                            binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.holdResponseAndStopBroker(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.holdResponseAndStopBroker($0)")
            }
    )
    public void testFailoverSendReplyLost() throws Exception {
@@ -318,11 +318,10 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processMessage",
                            targetLocation = "EXIT",
-                           binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.holdResponseAndStopProxyOnFirstSend(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.holdResponseAndStopProxyOnFirstSend($0)")
            }
    )
    public void testFailoverConnectionSendReplyLost() throws Exception {
@@ -515,11 +514,10 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processMessageAck",
                            targetLocation = "ENTRY",
-                           binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.holdResponseAndStopBroker(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.holdResponseAndStopBroker($0)")
            }
    )
    public void testFailoverConsumerAckLost() throws Exception {
@@ -683,11 +681,10 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processRemoveConsumer",
                            targetLocation = "ENTRY",
-                           binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.stopBrokerOnCounter(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverTransactionTest.stopBrokerOnCounter($0)")
            }
    )
    public void testPoolingNConsumesAfterReconnect() throws Exception {
@@ -975,9 +972,9 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
       producer.close();
    }
 
-   public static void holdResponseAndStopBroker(final AMQConnectionContext context) {
+   public static void holdResponseAndStopBroker(final OpenWireConnection.CommandProcessor context) {
       if (doByteman.get()) {
-         context.setDontSendReponse(true);
+         context.getContext().setDontSendReponse(true);
          Executors.newSingleThreadExecutor().execute(new Runnable() {
             public void run() {
                LOG.info("Stopping broker post commit...");
@@ -995,11 +992,11 @@ public class FailoverTransactionTest extends OpenwireArtemisBaseTest {
       }
    }
 
-   public static void holdResponseAndStopProxyOnFirstSend(final AMQConnectionContext context) {
+   public static void holdResponseAndStopProxyOnFirstSend(final OpenWireConnection.CommandProcessor context) {
       if (doByteman.get()) {
          if (firstSend) {
             firstSend = false;
-            context.setDontSendReponse(true);
+            context.getContext().setDontSendReponse(true);
             Executors.newSingleThreadExecutor().execute(new Runnable() {
                public void run() {
                   LOG.info("Stopping connection post send...");

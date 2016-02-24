@@ -33,6 +33,7 @@ import javax.jms.Session;
 import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection;
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQConnectionContext;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
 import org.apache.activemq.broker.artemiswrapper.OpenwireArtemisBaseTest;
@@ -93,11 +94,10 @@ public class FailoverDuplicateTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processMessage",
                            targetLocation = "EXIT",
-                           binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverDuplicateTest.holdResponseAndStopConn(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverDuplicateTest.holdResponseAndStopConn($0)")
            }
    )
    public void testFailoverSendReplyLost() throws Exception {
@@ -211,10 +211,10 @@ public class FailoverDuplicateTest extends OpenwireArtemisBaseTest {
       producer.close();
    }
 
-   public static void holdResponseAndStopConn(final AMQConnectionContext context) {
+   public static void holdResponseAndStopConn(final OpenWireConnection.CommandProcessor context) {
       if (doByteman.get()) {
          if (first.compareAndSet(false, true)) {
-            context.setDontSendReponse(true);
+            context.getContext().setDontSendReponse(true);
             Executors.newSingleThreadExecutor().execute(new Runnable() {
                @Override
                public void run() {
@@ -223,7 +223,7 @@ public class FailoverDuplicateTest extends OpenwireArtemisBaseTest {
                      Assert.assertTrue("message received on time", gotMessageLatch.await(60, TimeUnit.SECONDS));
                      Assert.assertTrue("new producers done on time", producersDone.await(120, TimeUnit.SECONDS));
                      LOG.info("Stopping connection post send and receive and multiple producers");
-                     context.getConnection().fail(null, "test Failoverduplicatetest");
+                     context.getContext().getConnection().fail(null, "test Failoverduplicatetest");
                   }
                   catch (Exception e) {
                      e.printStackTrace();

@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,6 +40,7 @@ import javax.jms.TextMessage;
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.artemis.core.config.Configuration;
+import org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection;
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQConnectionContext;
 import org.apache.activemq.artemis.jms.server.config.impl.JMSConfigurationImpl;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
@@ -55,6 +56,7 @@ import org.junit.Test;
 
 @RunWith(BMUnitRunner.class)
 public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTest {
+
    private static final Logger LOG = LoggerFactory.getLogger(FailoverConsumerOutstandingCommitTest.class);
    private static final String QUEUE_NAME = "FailoverWithOutstandingCommit";
    private static final String MESSAGE_TEXT = "Test message ";
@@ -78,22 +80,17 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
 
    @Test
    @BMRules(
-      rules = {
-              @BMRule(
-                      name = "set no return response",
-                      targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
-                      targetMethod = "processCommitTransactionOnePhase",
-                      targetLocation = "ENTRY",
-                      binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                      action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.holdResponse(context)"),
-              @BMRule(
-                      name = "stop broker before commit",
-                      targetClass = "org.apache.activemq.artemis.core.server.impl.ServerSessionImpl",
-                      targetMethod = "commit",
-                      targetLocation = "ENTRY",
-                      action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.stopServerInTransaction()"),
-      }
-   )
+      rules = {@BMRule(
+         name = "set no return response",
+         targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
+         targetMethod = "processCommitTransactionOnePhase",
+         targetLocation = "ENTRY",
+         action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.holdResponse($0)"), @BMRule(
+         name = "stop broker before commit",
+         targetClass = "org.apache.activemq.artemis.core.server.impl.ServerSessionImpl",
+         targetMethod = "commit",
+         targetLocation = "ENTRY",
+         action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.stopServerInTransaction()"),})
    public void testFailoverConsumerDups() throws Exception {
       doTestFailoverConsumerDups(true);
    }
@@ -173,40 +170,37 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
 
    @Test
    @BMRules(
-      rules = {
-              @BMRule(
-                      name = "set no return response",
-                      targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
-                      targetMethod = "processCommitTransactionOnePhase",
-                      targetLocation = "ENTRY",
-                      binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                      action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.holdResponse(context)"),
-              @BMRule(
-                      name = "stop broker before commit",
-                      targetClass = "org.apache.activemq.artemis.core.server.impl.ServerSessionImpl",
-                      targetMethod = "commit",
-                      targetLocation = "ENTRY",
-                      action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.stopServerInTransaction();return")})
+      rules = {@BMRule(
+         name = "set no return response",
+         targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
+         targetMethod = "processCommitTransactionOnePhase",
+         targetLocation = "ENTRY",
+         binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
+         action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.holdResponse($0)"),
+
+         @BMRule(
+         name = "stop broker before commit",
+         targetClass = "org.apache.activemq.artemis.core.server.impl.ServerSessionImpl",
+         targetMethod = "commit",
+         targetLocation = "ENTRY",
+         action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.stopServerInTransaction();return")})
    public void TestFailoverConsumerOutstandingSendTxIncomplete() throws Exception {
       doTestFailoverConsumerOutstandingSendTx(false);
    }
 
    @Test
    @BMRules(
-      rules = {
-              @BMRule(
-                      name = "set no return response",
-                      targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
-                      targetMethod = "processCommitTransactionOnePhase",
-                      targetLocation = "ENTRY",
-                      binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                      action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.holdResponse(context)"),
-              @BMRule(
-                      name = "stop broker after commit",
-                      targetClass = "org.apache.activemq.artemis.core.server.impl.ServerSessionImpl",
-                      targetMethod = "commit",
-                      targetLocation = "AT EXIT",
-                      action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.stopServerInTransaction()")})
+      rules = {@BMRule(
+         name = "set no return response",
+         targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
+         targetMethod = "processCommitTransactionOnePhase",
+         targetLocation = "ENTRY",
+         action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.holdResponse($0)"), @BMRule(
+         name = "stop broker after commit",
+         targetClass = "org.apache.activemq.artemis.core.server.impl.ServerSessionImpl",
+         targetMethod = "commit",
+         targetLocation = "AT EXIT",
+         action = "org.apache.activemq.transport.failover.FailoverConsumerOutstandingCommitTest.stopServerInTransaction()")})
    public void TestFailoverConsumerOutstandingSendTxComplete() throws Exception {
       doTestFailoverConsumerOutstandingSendTx(true);
    }
@@ -362,9 +356,9 @@ public class FailoverConsumerOutstandingCommitTest extends OpenwireArtemisBaseTe
       producer.close();
    }
 
-   public static void holdResponse(AMQConnectionContext context) {
+   public static void holdResponse(OpenWireConnection.CommandProcessor context) {
       if (doByteman.get()) {
-         context.setDontSendReponse(true);
+         context.getContext().setDontSendReponse(true);
       }
    }
 

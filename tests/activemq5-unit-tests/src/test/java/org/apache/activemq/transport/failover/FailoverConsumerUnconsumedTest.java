@@ -40,6 +40,7 @@ import org.apache.activemq.ActiveMQMessageConsumer;
 import org.apache.activemq.ActiveMQMessageTransformation;
 import org.apache.activemq.ActiveMQSession;
 import org.apache.activemq.artemis.api.core.SimpleString;
+import org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection;
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQConnectionContext;
 import org.apache.activemq.artemis.core.server.impl.QueueImpl;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
@@ -92,11 +93,10 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processAddConsumer",
                            targetLocation = "ENTRY",
-                           binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverConsumerUnconsumedTest.holdResponseAndStopBroker2(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverConsumerUnconsumedTest.holdResponseAndStopBroker2($0)")
            }
    )
    public void testFailoverConsumerDups() throws Exception {
@@ -109,11 +109,10 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processAddConsumer",
                            targetLocation = "ENTRY",
-                           binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverConsumerUnconsumedTest.holdResponseAndStopBroker2(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverConsumerUnconsumedTest.holdResponseAndStopBroker2($0)")
            }
    )
    public void testFailoverConsumerDupsNoAdvisoryWatch() throws Exception {
@@ -127,11 +126,10 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
            rules = {
                    @BMRule(
                            name = "set no return response and stop the broker",
-                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection",
+                           targetClass = "org.apache.activemq.artemis.core.protocol.openwire.OpenWireConnection$CommandProcessor",
                            targetMethod = "processAddConsumer",
                            targetLocation = "ENTRY",
-                           binding = "owconn:OpenWireConnection = $0; context = owconn.getContext()",
-                           action = "org.apache.activemq.transport.failover.FailoverConsumerUnconsumedTest.holdResponseAndStopBroker(context)")
+                           action = "org.apache.activemq.transport.failover.FailoverConsumerUnconsumedTest.holdResponseAndStopBroker($0)")
            }
    )
    public void testFailoverClientAckMissingRedelivery() throws Exception {
@@ -362,10 +360,10 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
       return idGen;
    }
 
-   public static void holdResponseAndStopBroker(AMQConnectionContext context) {
+   public static void holdResponseAndStopBroker(OpenWireConnection.CommandProcessor context) {
       if (doByteman.get()) {
          if (consumerCount.incrementAndGet() == maxConsumers) {
-            context.setDontSendReponse(true);
+            context.getContext().setDontSendReponse(true);
             Executors.newSingleThreadExecutor().execute(new Runnable() {
                public void run() {
                   try {
@@ -381,10 +379,10 @@ public class FailoverConsumerUnconsumedTest extends OpenwireArtemisBaseTest {
       }
    }
 
-   public static void holdResponseAndStopBroker2(AMQConnectionContext context) {
+   public static void holdResponseAndStopBroker2(OpenWireConnection.CommandProcessor context) {
       if (doByteman.get()) {
          if (consumerCount.incrementAndGet() == maxConsumers + (watchTopicAdvisories.get() ? 1 : 0)) {
-            context.setDontSendReponse(true);
+            context.getContext().setDontSendReponse(true);
             Executors.newSingleThreadExecutor().execute(new Runnable() {
                public void run() {
                   try {
