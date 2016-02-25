@@ -100,8 +100,8 @@ public class BrokerService implements Service {
    private BrokerId brokerId;
    private Throwable startException = null;
    private boolean startAsync = false;
-   public Set<Integer> extraConnectors = new HashSet<>();
-   public Set<Integer> sslConnectors = new HashSet<>();
+   public Set<ConnectorInfo> extraConnectors = new HashSet<>();
+//   public Set<Integer> sslConnectors = new HashSet<>();
 
    private List<TransportConnector> transportConnectors = new ArrayList<>();
    private File dataDirectoryFile;
@@ -494,11 +494,22 @@ public class BrokerService implements Service {
       this.transportConnectors = transportConnectors;
       for (TransportConnector connector : transportConnectors) {
          if (connector.getUri().getScheme().equals("ssl")) {
-            this.sslConnectors.add(connector.getUri().getPort());
-            System.out.println(this + " added ssl connector: " + connector.getUri().getPort());
+            boolean added = this.extraConnectors.add(new ConnectorInfo(connector.getUri().getPort(), true));
+            if (added) {
+               System.out.println("added ssl connector " + connector);
+            }
+            else {
+               System.out.println("WARNing! failed to add ssl connector: " + connector);
+            }
          }
          else {
-            this.extraConnectors.add(connector.getUri().getPort());
+            boolean added = this.extraConnectors.add(new ConnectorInfo(connector.getUri().getPort()));
+            if (added) {
+               System.out.println("added connector " + connector);
+            }
+            else {
+               System.out.println("WARNing! failed to add connector: " + connector);
+            }
          }
       }
    }
@@ -567,7 +578,7 @@ public class BrokerService implements Service {
 
       connector = new FakeTransportConnector(bindAddress);
       this.transportConnectors.add(connector);
-      this.extraConnectors.add(port);
+      this.extraConnectors.add(new ConnectorInfo(port));
 
       return connector;
    }
@@ -752,8 +763,10 @@ public class BrokerService implements Service {
       URI uri = null;
       try {
          if (this.extraConnectors.size() > 0) {
-            Integer port = extraConnectors.iterator().next();
-            uri = new URI("tcp://localhost:" + port);
+            ConnectorInfo info = extraConnectors.iterator().next();
+            Integer port = info.port;
+            String schema = info.ssl ? "ssl" : "tcp";
+            uri = new URI(schema + "://localhost:" + port);
          } else {
             uri = new URI(this.getDefaultUri());
          }
@@ -763,6 +776,33 @@ public class BrokerService implements Service {
       return uri;
    }
 
+   public static class ConnectorInfo {
+
+      public int port;
+      public boolean ssl;
+
+      public ConnectorInfo(int port) {
+         this(port, false);
+      }
+
+      public ConnectorInfo(int port, boolean ssl) {
+         this.port = port;
+         this.ssl = ssl;
+      }
+
+      @Override
+      public int hashCode() {
+         return port;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+         if (obj instanceof ConnectorInfo) {
+            return this.port == ((ConnectorInfo)obj).port;
+         }
+         return false;
+      }
+   }
 }
 
 

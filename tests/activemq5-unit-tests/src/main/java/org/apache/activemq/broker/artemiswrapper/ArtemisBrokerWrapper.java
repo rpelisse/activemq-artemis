@@ -94,17 +94,13 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
       if (bservice.extraConnectors.size() == 0) {
          serverConfig.addAcceptorConfiguration("home", "tcp://localhost:61616?protocols=OPENWIRE,CORE");
       }
-      if (this.bservice.enableSsl() && bservice.sslConnectors.size() == 0) {
+      if (this.bservice.enableSsl()) {
          //default
-         addSSLAcceptor(serverConfig, 61611);
+         addServerAcceptor(serverConfig, new BrokerService.ConnectorInfo(61611));
       }
 
-      for (Integer port : bservice.sslConnectors) {
-         addSSLAcceptor(serverConfig, port);
-      }
-
-      for (Integer port : bservice.extraConnectors) {
-         serverConfig.addAcceptorConfiguration("homePort" + port, "tcp://localhost:" + port + "?protocols=OPENWIRE,CORE");
+      for (BrokerService.ConnectorInfo info : bservice.extraConnectors) {
+         addServerAcceptor(serverConfig, info);
       }
 
       serverConfig.setSecurityEnabled(enableSecurity);
@@ -170,21 +166,26 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
 
    }
 
-   private void addSSLAcceptor(Configuration serverConfig, Integer port) {
-      HashMap<String, Object> params = new HashMap<String, Object>();
-      params.put(TransportConstants.SSL_ENABLED_PROP_NAME, true);
-      params.put(TransportConstants.PORT_PROP_NAME, port);
-      params.put(TransportConstants.PROTOCOLS_PROP_NAME, "OPENWIRE");
-      params.put(TransportConstants.KEYSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_KEYSTORE);
-      params.put(TransportConstants.KEYSTORE_PASSWORD_PROP_NAME, bservice.KEYSTORE_PASSWORD);
-      params.put(TransportConstants.KEYSTORE_PROVIDER_PROP_NAME, bservice.storeType);
-      if (bservice.SERVER_SIDE_TRUSTSTORE != null) {
-         params.put(TransportConstants.TRUSTSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_TRUSTSTORE);
-         params.put(TransportConstants.TRUSTSTORE_PASSWORD_PROP_NAME, bservice.TRUSTSTORE_PASSWORD);
-         params.put(TransportConstants.TRUSTSTORE_PROVIDER_PROP_NAME, bservice.storeType);
+   private void addServerAcceptor(Configuration serverConfig, BrokerService.ConnectorInfo info) throws Exception {
+      if (info.ssl) {
+         HashMap<String, Object> params = new HashMap<String, Object>();
+         params.put(TransportConstants.SSL_ENABLED_PROP_NAME, true);
+         params.put(TransportConstants.PORT_PROP_NAME, info.port);
+         params.put(TransportConstants.PROTOCOLS_PROP_NAME, "OPENWIRE");
+         params.put(TransportConstants.KEYSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_KEYSTORE);
+         params.put(TransportConstants.KEYSTORE_PASSWORD_PROP_NAME, bservice.KEYSTORE_PASSWORD);
+         params.put(TransportConstants.KEYSTORE_PROVIDER_PROP_NAME, bservice.storeType);
+         if (bservice.SERVER_SIDE_TRUSTSTORE != null) {
+            params.put(TransportConstants.TRUSTSTORE_PATH_PROP_NAME, bservice.SERVER_SIDE_TRUSTSTORE);
+            params.put(TransportConstants.TRUSTSTORE_PASSWORD_PROP_NAME, bservice.TRUSTSTORE_PASSWORD);
+            params.put(TransportConstants.TRUSTSTORE_PROVIDER_PROP_NAME, bservice.storeType);
+         }
+         TransportConfiguration sslTransportConfig = new TransportConfiguration(NETTY_ACCEPTOR_FACTORY, params);
+         serverConfig.getAcceptorConfigurations().add(sslTransportConfig);
       }
-      TransportConfiguration sslTransportConfig = new TransportConfiguration(NETTY_ACCEPTOR_FACTORY, params);
-      serverConfig.getAcceptorConfigurations().add(sslTransportConfig);
+      else {
+         serverConfig.addAcceptorConfiguration("homePort" + info.port, "tcp://localhost:" + info.port + "?protocols=OPENWIRE,CORE");
+      }
    }
 
    private void translatePolicyMap(Configuration serverConfig, PolicyMap policyMap) {
