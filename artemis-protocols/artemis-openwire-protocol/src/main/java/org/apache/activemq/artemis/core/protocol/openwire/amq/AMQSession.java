@@ -61,6 +61,7 @@ import org.apache.activemq.artemis.core.server.ServerMessage;
 import org.apache.activemq.artemis.core.server.impl.ServerMessageImpl;
 import org.apache.activemq.artemis.core.transaction.impl.XidImpl;
 import org.apache.activemq.artemis.spi.core.protocol.SessionCallback;
+import org.apache.activemq.openwire.OpenWireFormat;
 import org.apache.activemq.wireformat.WireFormat;
 
 public class AMQSession implements SessionCallback {
@@ -82,6 +83,11 @@ public class AMQSession implements SessionCallback {
 
    private OpenWireProtocolManager manager;
 
+   // The sessionWireformat used by the session
+   // this object is meant to be used per thread / session
+   // so we make a new one per AMQSession
+   private final OpenWireMessageConverter converter;
+
    public AMQSession(ConnectionInfo connInfo,
                      SessionInfo sessInfo,
                      ActiveMQServer server,
@@ -95,6 +101,9 @@ public class AMQSession implements SessionCallback {
       this.connection = connection;
       this.scheduledPool = scheduledPool;
       this.manager = manager;
+      OpenWireFormat marshaller = (OpenWireFormat)connection.getMarshaller();
+
+      this.converter = new OpenWireMessageConverter(marshaller.copy());
    }
 
    public void initialize() {
@@ -249,7 +258,8 @@ public class AMQSession implements SessionCallback {
       }
 
       for (ActiveMQDestination dest : actualDestinations) {
-         ServerMessageImpl coreMsg = new ServerMessageImpl(-1, 1024);
+
+         ServerMessageImpl coreMsg = (ServerMessageImpl)converter.inbound(messageSend);
 
          /* ActiveMQ failover transport will attempt to reconnect after connection failure.  Any sent messages that did
          * not receive acks will be resent.  (ActiveMQ broker handles this by returning a last sequence id received to
@@ -258,7 +268,6 @@ public class AMQSession implements SessionCallback {
          if (producerExchange.getConnectionContext().isFaultTolerant() && !messageSend.getProperties().containsKey(org.apache.activemq.artemis.api.core.Message.HDR_DUPLICATE_DETECTION_ID)) {
             coreMsg.putStringProperty(org.apache.activemq.artemis.api.core.Message.HDR_DUPLICATE_DETECTION_ID.toString(), messageSend.getMessageId().toString());
          }
-         OpenWireMessageConverter.toCoreMessage(coreMsg, messageSend, connection.getMarshaller());
          SimpleString address = OpenWireUtil.toCoreAddress(dest);
          coreMsg.setAddress(address);
 

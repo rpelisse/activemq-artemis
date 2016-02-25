@@ -115,6 +115,8 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
    private boolean updateClusterClients = false;
    private boolean updateClusterClientsOnRemove = false;
 
+   private final OpenWireMessageConverter messageConverter;
+
    public OpenWireProtocolManager(OpenWireProtocolManagerFactory factory, ActiveMQServer server) {
       this.factory = factory;
       this.server = server;
@@ -123,6 +125,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
       wireFactory.setCacheEnabled(false);
       advisoryProducerId.setConnectionId(ID_GENERATOR.generateId());
       scheduledPool = server.getScheduledPool();
+      this.messageConverter = new OpenWireMessageConverter(wireFactory.createWireFormat());
 
       final ClusterManager clusterManager = this.server.getClusterManager();
 
@@ -132,6 +135,10 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
       if (cc != null) {
          cc.addClusterTopologyListener(this);
       }
+   }
+
+   public OpenWireFormat getNewWireFormat() {
+      return (OpenWireFormat)wireFactory.createWireFormat();
    }
 
    @Override
@@ -217,7 +224,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
 
    @Override
    public MessageConverter getConverter() {
-      return new OpenWireMessageConverter();
+      return messageConverter;
    }
 
    @Override

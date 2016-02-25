@@ -146,8 +146,6 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
    private volatile AMQSession advisorySession;
 
-   private String defaultSocketURIString;
-
    // TODO-NOW: check on why there are two connections created for every createConnection on the client.
    public OpenWireConnection(Connection connection,
                              Executor executor,
@@ -156,7 +154,6 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       super(connection, executor);
       this.protocolManager = openWireProtocolManager;
       this.wireFormat = wf;
-      this.defaultSocketURIString = connection.getLocalAddress();
    }
 
    // SecurityAuth implementation
@@ -633,10 +630,6 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
    public AMQConnectionContext getContext() {
       return this.context;
-   }
-
-   public String getDefaultSocketURIString() {
-      return defaultSocketURIString;
    }
 
    public void updateClient(ConnectionControl control) {
