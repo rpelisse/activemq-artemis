@@ -234,7 +234,9 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener {
 
    @Override
    public void fireSlowConsumer() {
-      slowConsumerListener.onSlowConsumer(this);
+      if (slowConsumerListener != null) {
+         slowConsumerListener.onSlowConsumer(this);
+      }
    }
 
    @Override

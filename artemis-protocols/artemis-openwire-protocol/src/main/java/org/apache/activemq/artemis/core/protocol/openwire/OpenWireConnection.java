@@ -204,6 +204,11 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
          boolean responseRequired = command.isResponseRequired();
          int commandId = command.getCommandId();
+
+
+         // TODO-NOW: the server should send packets to the client based on the requested times
+         //           need to look at what Andy did on AMQP
+
          // the connection handles pings, negotiations directly.
          // and delegate all other commands to manager.
          if (command.getClass() == KeepAliveInfo.class) {
@@ -1196,12 +1201,12 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
       @Override
       public Response processMessageDispatch(MessageDispatch arg0) throws Exception {
-         throw new IllegalStateException("not implemented! ");
+         return null;
       }
 
       @Override
       public Response processMessageDispatchNotification(MessageDispatchNotification arg0) throws Exception {
-         throw new IllegalStateException("not implemented! ");
+         return null;
       }
 
       @Override
@@ -1222,7 +1227,8 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
       @Override
       public Response processProducerAck(ProducerAck arg0) throws Exception {
-         throw new IllegalStateException("not implemented! ");
+         // a broker doesn't do producers.. this shouldn't happen
+         return null;
       }
 
       @Override
