@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.activemq.artemis.api.core.SimpleString;
+import org.apache.activemq.artemis.core.server.SlowConsumerDetectionListener;
 import org.apache.activemq.artemis.spi.core.remoting.ReadyListener;
 import org.apache.activemq.command.ActiveMQDestination;
 import org.apache.activemq.command.ConnectionInfo;
@@ -70,8 +71,6 @@ public class AMQSession implements SessionCallback {
    private OpenWireConnection connection;
 
    private Map<Long, AMQConsumer> consumers = new ConcurrentHashMap<>();
-
-   private Map<Long, AMQProducer> producers = new HashMap<>();
 
    private AtomicBoolean started = new AtomicBoolean(false);
 
@@ -121,7 +120,7 @@ public class AMQSession implements SessionCallback {
 
    }
 
-   public void createConsumer(ConsumerInfo info, AMQSession amqSession) throws Exception {
+   public void createConsumer(ConsumerInfo info, AMQSession amqSession, SlowConsumerDetectionListener slowConsumerDetectionListener) throws Exception {
       //check destination
       ActiveMQDestination dest = info.getDestination();
       ActiveMQDestination[] dests = null;
@@ -139,7 +138,7 @@ public class AMQSession implements SessionCallback {
          }
          AMQConsumer consumer = new AMQConsumer(this, d, info, scheduledPool);
 
-         consumer.init();
+         consumer.init(slowConsumerDetectionListener);
          consumerMap.put(d, consumer);
          consumers.put(consumer.getNativeId(), consumer);
       }
@@ -226,20 +225,6 @@ public class AMQSession implements SessionCallback {
 
       coreSession.amqCloseConsumer(consumerId, failed);
       consumers.remove(consumerId);
-   }
-
-   public void createProducer(ProducerInfo info) throws Exception {
-      AMQProducer producer = new AMQProducer(this, info);
-      producer.init();
-      producers.put(info.getProducerId().getValue(), producer);
-   }
-
-   public void removeProducer(ProducerInfo info) {
-      removeProducer(info.getProducerId());
-   }
-
-   public void removeProducer(ProducerId id) {
-      producers.remove(id.getValue());
    }
 
    public SendingResult send(AMQProducerBrokerExchange producerExchange,

@@ -27,7 +27,14 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.activemq.artemis.api.core.SimpleString;
 import org.apache.activemq.artemis.core.client.impl.ClientConsumerImpl;
+import org.apache.activemq.artemis.core.protocol.openwire.OpenWireMessageConverter;
+import org.apache.activemq.artemis.core.protocol.openwire.OpenWireUtil;
+import org.apache.activemq.artemis.core.server.QueueQueryResult;
+import org.apache.activemq.artemis.core.server.ServerMessage;
+import org.apache.activemq.artemis.core.server.SlowConsumerDetectionListener;
+import org.apache.activemq.artemis.jms.client.ActiveMQDestination;
 import org.apache.activemq.command.ConsumerId;
 import org.apache.activemq.command.ConsumerInfo;
 import org.apache.activemq.command.MessageAck;
@@ -36,14 +43,9 @@ import org.apache.activemq.command.MessageId;
 import org.apache.activemq.command.MessagePull;
 import org.apache.activemq.command.TransactionId;
 import org.apache.activemq.wireformat.WireFormat;
-import org.apache.activemq.artemis.api.core.SimpleString;
-import org.apache.activemq.artemis.core.protocol.openwire.OpenWireMessageConverter;
-import org.apache.activemq.artemis.core.protocol.openwire.OpenWireUtil;
-import org.apache.activemq.artemis.core.server.QueueQueryResult;
-import org.apache.activemq.artemis.core.server.ServerMessage;
-import org.apache.activemq.artemis.jms.client.ActiveMQDestination;
 
 public class AMQConsumer implements BrowserListener {
+
    private AMQSession session;
    private org.apache.activemq.command.ActiveMQDestination actualDest;
    private ConsumerInfo info;
@@ -72,7 +74,7 @@ public class AMQConsumer implements BrowserListener {
       }
    }
 
-   public void init() throws Exception {
+   public void init(SlowConsumerDetectionListener slowConsumerDetectionListener) throws Exception {
       AMQServerSession coreSession = session.getCoreSession();
 
       SimpleString selector = info.getSelector() == null ? null : new SimpleString(info.getSelector());
@@ -127,7 +129,9 @@ public class AMQConsumer implements BrowserListener {
             coreSession.createQueue(address, subQueueName, selector, true, false);
          }
 
-         coreSession.createConsumer(nativeId, subQueueName, null, info.isBrowser(), false, -1);
+         AMQServerConsumer serverConsumer = (AMQServerConsumer) coreSession.createConsumer(nativeId, subQueueName, null, info.isBrowser(), false, -1);
+         serverConsumer.setlowConsumerDetection(slowConsumerDetectionListener);
+         serverConsumer.setAmqConsumer(this);
       }
       else {
          SimpleString queueName = new SimpleString("jms.queue." + this.actualDest.getPhysicalName());

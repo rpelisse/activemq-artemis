@@ -48,6 +48,7 @@ import org.apache.activemq.artemis.core.server.Queue;
 import org.apache.activemq.artemis.core.server.ServerConsumer;
 import org.apache.activemq.artemis.core.server.ServerMessage;
 import org.apache.activemq.artemis.core.server.ServerSession;
+import org.apache.activemq.artemis.core.server.SlowConsumerDetectionListener;
 import org.apache.activemq.artemis.core.server.management.ManagementService;
 import org.apache.activemq.artemis.core.server.management.Notification;
 import org.apache.activemq.artemis.core.transaction.Transaction;
@@ -85,6 +86,8 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener {
    private final boolean supportLargeMessage;
 
    private Object protocolContext;
+
+   private SlowConsumerDetectionListener slowConsumerListener;
 
    /**
     * We get a readLock when a message is handled, and return the readLock when the message is finally delivered
@@ -218,6 +221,21 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener {
 
    // ServerConsumer implementation
    // ----------------------------------------------------------------------
+
+   @Override
+   public void setlowConsumerDetection(SlowConsumerDetectionListener listener) {
+      this.slowConsumerListener = listener;
+   }
+
+   @Override
+   public SlowConsumerDetectionListener getSlowConsumerDetecion() {
+      return slowConsumerListener;
+   }
+
+   @Override
+   public void fireSlowConsumer() {
+      slowConsumerListener.onSlowConsumer(this);
+   }
 
    @Override
    public Object getProtocolContext() {

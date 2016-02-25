@@ -19,8 +19,6 @@ package org.apache.activemq.artemis.core.protocol.openwire.amq;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.activemq.command.Message;
-import org.apache.activemq.command.MessageId;
 import org.apache.activemq.state.ProducerState;
 
 public class AMQProducerBrokerExchange {
@@ -28,7 +26,6 @@ public class AMQProducerBrokerExchange {
    private AMQConnectionContext connectionContext;
    private ProducerState producerState;
    private boolean mutable = true;
-   private AtomicLong lastSendSequenceNumber = new AtomicLong(-1);
    private final FlowControlInfo flowControlInfo = new FlowControlInfo();
 
    public AMQProducerBrokerExchange() {
@@ -57,13 +54,6 @@ public class AMQProducerBrokerExchange {
    }
 
    /**
-    * @return the mutable
-    */
-   public boolean isMutable() {
-      return this.mutable;
-   }
-
-   /**
     * @param mutable the mutable to set
     */
    public void setMutable(boolean mutable) {
@@ -84,73 +74,11 @@ public class AMQProducerBrokerExchange {
       this.producerState = producerState;
    }
 
-   /**
-    * Enforce duplicate suppression using info from persistence adapter
-    *
-    * @return false if message should be ignored as a duplicate
-    */
-   public boolean canDispatch(Message messageSend) {
-      // TODO: auditProduceSequenceIds is never true
-      boolean canDispatch = true;
-      //TODO: DEAD CODE
-//      if (auditProducerSequenceIds && messageSend.isPersistent()) {
-//         final long producerSequenceId = messageSend.getMessageId().getProducerSequenceId();
-//         if (isNetworkProducer) {
-//            // messages are multiplexed on this producer so we need to query the
-//            // persistenceAdapter
-//            long lastStoredForMessageProducer = getStoredSequenceIdForMessage(messageSend.getMessageId());
-//            if (producerSequenceId <= lastStoredForMessageProducer) {
-//               canDispatch = false;
-//            }
-//         }
-//         else if (producerSequenceId <= lastSendSequenceNumber.get()) {
-//            canDispatch = false;
-//            // TODO: WHAT IS THIS?
-//            if (messageSend.isInTransaction()) {
-//
-//
-//            }
-//            else {
-//            }
-//         }
-//         else {
-//            // track current so we can suppress duplicates later in the stream
-//            lastSendSequenceNumber.set(producerSequenceId);
-//         }
-//      }
-      return canDispatch;
-   }
-
-   private long getStoredSequenceIdForMessage(MessageId messageId) {
-      return -1;
-   }
-
    public void setLastStoredSequenceId(long l) {
-   }
-
-   public void incrementSend() {
-      flowControlInfo.incrementSend();
    }
 
    public void blockingOnFlowControl(boolean blockingOnFlowControl) {
       flowControlInfo.setBlockingOnFlowControl(blockingOnFlowControl);
-   }
-
-   public boolean isBlockedForFlowControl() {
-      return flowControlInfo.isBlockingOnFlowControl();
-   }
-
-   public void resetFlowControl() {
-      flowControlInfo.reset();
-   }
-
-   public long getTotalTimeBlocked() {
-      return flowControlInfo.getTotalTimeBlocked();
-   }
-
-   public int getPercentageBlocked() {
-      double value = flowControlInfo.getSendsBlocked() / flowControlInfo.getTotalSends();
-      return (int) value * 100;
    }
 
    public static class FlowControlInfo {
@@ -160,10 +88,6 @@ public class AMQProducerBrokerExchange {
       private AtomicLong sendsBlocked = new AtomicLong();
       private AtomicLong totalTimeBlocked = new AtomicLong();
 
-      public boolean isBlockingOnFlowControl() {
-         return blockingOnFlowControl.get();
-      }
-
       public void setBlockingOnFlowControl(boolean blockingOnFlowControl) {
          this.blockingOnFlowControl.set(blockingOnFlowControl);
          if (blockingOnFlowControl) {
@@ -171,28 +95,8 @@ public class AMQProducerBrokerExchange {
          }
       }
 
-      public long getTotalSends() {
-         return totalSends.get();
-      }
-
-      public void incrementSend() {
-         this.totalSends.incrementAndGet();
-      }
-
-      public long getSendsBlocked() {
-         return sendsBlocked.get();
-      }
-
       public void incrementSendBlocked() {
          this.sendsBlocked.incrementAndGet();
-      }
-
-      public long getTotalTimeBlocked() {
-         return totalTimeBlocked.get();
-      }
-
-      public void incrementTimeBlocked(long time) {
-         this.totalTimeBlocked.addAndGet(time);
       }
 
       public void reset() {

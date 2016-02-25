@@ -33,6 +33,18 @@ import org.apache.activemq.artemis.spi.core.protocol.SessionCallback;
 
 public class AMQServerConsumer extends ServerConsumerImpl {
 
+   // TODO-NOW: remove this once unified
+   AMQConsumer amqConsumer;
+
+   public AMQConsumer getAmqConsumer() {
+      return amqConsumer;
+   }
+
+   /** TODO-NOW: remove this once unified */
+   public void setAmqConsumer(AMQConsumer amqConsumer) {
+      this.amqConsumer = amqConsumer;
+   }
+
    public AMQServerConsumer(long consumerID,
                             AMQServerSession serverSession,
                             QueueBinding binding,
