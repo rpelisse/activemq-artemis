@@ -51,7 +51,9 @@ import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQSingleConsumerB
 import org.apache.activemq.artemis.core.remoting.FailureListener;
 import org.apache.activemq.artemis.core.security.CheckType;
 import org.apache.activemq.artemis.core.security.SecurityAuth;
+import org.apache.activemq.artemis.core.server.ActiveMQMessageBundle;
 import org.apache.activemq.artemis.core.server.ActiveMQServerLogger;
+import org.apache.activemq.artemis.core.server.BindingQueryResult;
 import org.apache.activemq.artemis.core.server.Queue;
 import org.apache.activemq.artemis.core.server.ServerConsumer;
 import org.apache.activemq.artemis.core.server.SlowConsumerDetectionListener;
@@ -146,6 +148,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
    private String defaultSocketURIString;
 
+   // TODO-NOW: check on why there are two connections created for every createConnection on the client.
    public OpenWireConnection(Connection connection,
                              Executor executor,
                              OpenWireProtocolManager openWireProtocolManager,
@@ -267,13 +270,25 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
          }
       }
-      catch (IOException e) {
+      catch (Exception e) {
+         ActiveMQServerLogger.LOGGER.debug(e);
 
-         // TODO-NOW: send errors
-         ActiveMQServerLogger.LOGGER.error("error decoding", e);
-      }
-      catch (Throwable t) {
-         ActiveMQServerLogger.LOGGER.error("error decoding", t);
+         Response resp;
+         if (e instanceof ActiveMQSecurityException) {
+            resp = new ExceptionResponse(new JMSSecurityException(e.getMessage()));
+         }
+         else if (e instanceof ActiveMQNonExistentQueueException) {
+            resp = new ExceptionResponse(new InvalidDestinationException(e.getMessage()));
+         }
+         else {
+            resp = new ExceptionResponse(e);
+         }
+         try {
+            dispatch(resp);
+         }
+         catch (IOException e2) {
+            ActiveMQServerLogger.LOGGER.warn(e.getMessage(), e2);
+         }
       }
    }
 
@@ -861,6 +876,22 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       }
    }
 
+   /**
+    * Checks to see if this destination exists.  If it does not throw an invalid destination exception.
+    *
+    * @param destination
+    */
+   private void validateDestination(ActiveMQDestination destination) throws Exception {
+      if (destination.isQueue()) {
+         SimpleString physicalName = OpenWireUtil.toCoreAddress(destination);
+         BindingQueryResult result = protocolManager.getServer().bindingQuery(physicalName);
+         if (!result.isExists() && !result.isAutoCreateJmsQueues()) {
+            throw ActiveMQMessageBundle.BUNDLE.noSuchQueue(physicalName);
+         }
+      }
+   }
+
+
    // This will listen for commands throught the protocolmanager
    public class CommandProcessor implements CommandVisitor {
 
@@ -892,69 +923,40 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
       @Override
       public Response processAddProducer(ProducerInfo info) throws Exception {
-         Response resp = null;
-         try {
-            SessionId sessionId = info.getProducerId().getParentId();
-            ConnectionId connectionId = sessionId.getParentId();
-            ConnectionState cs = getState();
-            if (cs == null) {
-               throw new IllegalStateException("Cannot add a producer to a connection that had not been registered: " + connectionId);
-            }
-            SessionState ss = cs.getSessionState(sessionId);
-            if (ss == null) {
-               throw new IllegalStateException("Cannot add a producer to a session that had not been registered: " + sessionId);
-            }
-            // Avoid replaying dup commands
-            if (!ss.getProducerIds().contains(info.getProducerId())) {
+         SessionId sessionId = info.getProducerId().getParentId();
+         ConnectionState cs = getState();
 
-               AMQSession amqSession = sessions.get(sessionId);
-               if (amqSession == null) {
-                  throw new IllegalStateException("Session not exist! : " + sessionId);
-               }
-
-               ActiveMQDestination destination = info.getDestination();
-               if (destination != null && !AdvisorySupport.isAdvisoryTopic(destination)) {
-                  if (destination.isQueue()) {
-                     OpenWireUtil.validateDestination(destination, amqSession);
-                  }
-                  DestinationInfo destInfo = new DestinationInfo(getContext().getConnectionId(), DestinationInfo.ADD_OPERATION_TYPE, destination);
-                  OpenWireConnection.this.addDestination(destInfo);
-               }
-
-               ss.addProducer(info);
-
-            }
+         if (cs == null) {
+            throw new IllegalStateException("Cannot add a producer to a connection that had not been registered: " + sessionId.getParentId());
          }
-         catch (Exception e) {
-            if (e instanceof ActiveMQSecurityException) {
-               resp = new ExceptionResponse(new JMSSecurityException(e.getMessage()));
-            }
-            else if (e instanceof ActiveMQNonExistentQueueException) {
-               resp = new ExceptionResponse(new InvalidDestinationException(e.getMessage()));
-            }
-            else {
-               resp = new ExceptionResponse(e);
-            }
+
+         SessionState ss = cs.getSessionState(sessionId);
+         if (ss == null) {
+            throw new IllegalStateException("Cannot add a producer to a session that had not been registered: " + sessionId);
          }
-         return resp;
+
+         // Avoid replaying dup commands
+         if (!ss.getProducerIds().contains(info.getProducerId())) {
+            ActiveMQDestination destination = info.getDestination();
+
+            if (destination != null && !AdvisorySupport.isAdvisoryTopic(destination)) {
+               if (destination.isQueue()) {
+                  OpenWireConnection.this.validateDestination(destination);
+               }
+               DestinationInfo destInfo = new DestinationInfo(getContext().getConnectionId(), DestinationInfo.ADD_OPERATION_TYPE, destination);
+               OpenWireConnection.this.addDestination(destInfo);
+            }
+
+            ss.addProducer(info);
+
+         }
+         return null;
       }
 
       @Override
-      public Response processAddConsumer(ConsumerInfo info) {
-         Response resp = null;
-         try {
-            addConsumer(info);
-         }
-         catch (Exception e) {
-            e.printStackTrace();
-            if (e instanceof ActiveMQSecurityException) {
-               resp = new ExceptionResponse(new JMSSecurityException(e.getMessage()));
-            }
-            else {
-               resp = new ExceptionResponse(e);
-            }
-         }
-         return resp;
+      public Response processAddConsumer(ConsumerInfo info) throws Exception {
+         addConsumer(info);
+         return null;
       }
 
       @Override
@@ -1146,50 +1148,40 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       }
 
       @Override
-      public Response processMessage(Message messageSend) {
-         Response resp = null;
-         try {
-            ProducerId producerId = messageSend.getProducerId();
-            AMQProducerBrokerExchange producerExchange = getProducerBrokerExchange(producerId);
-            final AMQConnectionContext pcontext = producerExchange.getConnectionContext();
-            final ProducerInfo producerInfo = producerExchange.getProducerState().getInfo();
-            boolean sendProducerAck = !messageSend.isResponseRequired() && producerInfo.getWindowSize() > 0 && !pcontext.isInRecoveryMode();
+      public Response processMessage(Message messageSend) throws Exception {
+         ProducerId producerId = messageSend.getProducerId();
+         AMQProducerBrokerExchange producerExchange = getProducerBrokerExchange(producerId);
+         final AMQConnectionContext pcontext = producerExchange.getConnectionContext();
+         final ProducerInfo producerInfo = producerExchange.getProducerState().getInfo();
+         boolean sendProducerAck = !messageSend.isResponseRequired() && producerInfo.getWindowSize() > 0 && !pcontext.isInRecoveryMode();
 
-            AMQSession session = getSession(producerId.getParentId());
+         AMQSession session = getSession(producerId.getParentId());
 
-            SendingResult result = session.send(producerExchange, messageSend, sendProducerAck);
-            if (result.isBlockNextSend()) {
-               if (!context.isNetworkConnection() && result.isSendFailIfNoSpace()) {
-                  // TODO see logging
-                  throw new ResourceAllocationException("Usage Manager Memory Limit reached. Stopping producer (" + producerId + ") to prevent flooding " + result.getBlockingAddress() + "." + " See http://activemq.apache.org/producer-flow-control.html for more info");
-               }
-
-               if (producerInfo.getWindowSize() > 0 || messageSend.isResponseRequired()) {
-                  //in that case don't send the response
-                  //this will force the client to wait until
-                  //the response is got.
-                  context.setDontSendReponse(true);
-               }
-               else {
-                  //hang the connection until the space is available
-                  session.blockingWaitForSpace(producerExchange, result);
-               }
+         SendingResult result = session.send(producerExchange, messageSend, sendProducerAck);
+         if (result.isBlockNextSend()) {
+            if (!context.isNetworkConnection() && result.isSendFailIfNoSpace()) {
+               // TODO see logging
+               throw new ResourceAllocationException("Usage Manager Memory Limit reached. Stopping producer (" + producerId + ") to prevent flooding " + result.getBlockingAddress() + "." + " See http://activemq.apache.org/producer-flow-control.html for more info");
             }
-            else if (sendProducerAck) {
-               // TODO-now: send through OperationContext
-               ProducerAck ack = new ProducerAck(producerInfo.getProducerId(), messageSend.getSize());
-               OpenWireConnection.this.dispatchAsync(ack);
-            }
-         }
-         catch (Throwable e) {
-            if (e instanceof ActiveMQSecurityException) {
-               resp = new ExceptionResponse(new JMSSecurityException(e.getMessage()));
+
+            if (producerInfo.getWindowSize() > 0 || messageSend.isResponseRequired()) {
+               //in that case don't send the response
+               //this will force the client to wait until
+               //the response is got.
+               context.setDontSendReponse(true);
             }
             else {
-               resp = new ExceptionResponse(e);
+               //hang the connection until the space is available
+               session.blockingWaitForSpace(producerExchange, result);
             }
          }
-         return resp;
+         else if (sendProducerAck) {
+            // TODO-now: send through OperationContext
+            ProducerAck ack = new ProducerAck(producerInfo.getProducerId(), messageSend.getSize());
+            OpenWireConnection.this.dispatchAsync(ack);
+         }
+
+         return null;
       }
 
       @Override

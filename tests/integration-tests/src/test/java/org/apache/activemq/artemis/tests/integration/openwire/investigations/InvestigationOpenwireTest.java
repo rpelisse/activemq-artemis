@@ -17,14 +17,21 @@
 
 package org.apache.activemq.artemis.tests.integration.openwire.investigations;
 
-import org.apache.activemq.artemis.tests.integration.openwire.BasicOpenWireTest;
-import org.junit.Assert;
-import org.junit.Test;
-
-import javax.jms.*;
+import javax.jms.Connection;
+import javax.jms.MessageConsumer;
+import javax.jms.MessageProducer;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+import javax.jms.XAConnection;
+import javax.jms.XASession;
 import javax.transaction.xa.XAResource;
 import java.util.Collection;
 import java.util.LinkedList;
+
+import org.apache.activemq.artemis.tests.integration.openwire.BasicOpenWireTest;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class InvestigationOpenwireTest extends BasicOpenWireTest {
 

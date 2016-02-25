@@ -18,16 +18,12 @@ package org.apache.activemq.artemis.core.protocol.openwire;
 
 import org.apache.activemq.artemis.api.core.ActiveMQBuffer;
 import org.apache.activemq.artemis.api.core.ActiveMQBuffers;
+import org.apache.activemq.artemis.api.core.SimpleString;
 import org.apache.activemq.artemis.core.server.ServerMessage;
 import org.apache.activemq.command.ActiveMQDestination;
-import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQServerSession;
-import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQSession;
-import org.apache.activemq.artemis.core.server.ActiveMQMessageBundle;
-import org.apache.activemq.artemis.core.server.BindingQueryResult;
 import org.apache.activemq.command.ActiveMQQueue;
 import org.apache.activemq.command.ActiveMQTopic;
 import org.apache.activemq.util.ByteSequence;
-import org.apache.activemq.artemis.api.core.SimpleString;
 
 public class OpenWireUtil {
 
@@ -61,23 +57,6 @@ public class OpenWireUtil {
       }
       else {
          return new ActiveMQTopic(strippedAddress);
-      }
-   }
-
-   /**
-    * Checks to see if this destination exists.  If it does not throw an invalid destination exception.
-    *
-    * @param destination
-    * @param amqSession
-    */
-   public static void validateDestination(ActiveMQDestination destination, AMQSession amqSession) throws Exception {
-      if (destination.isQueue()) {
-         AMQServerSession coreSession = amqSession.getCoreSession();
-         SimpleString physicalName = OpenWireUtil.toCoreAddress(destination);
-         BindingQueryResult result = coreSession.executeBindingQuery(physicalName);
-         if (!result.isExists() && !result.isAutoCreateJmsQueues()) {
-            throw ActiveMQMessageBundle.BUNDLE.noSuchQueue(physicalName);
-         }
       }
    }
 
