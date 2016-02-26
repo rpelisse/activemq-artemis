@@ -187,13 +187,4 @@ public class AMQServerConsumer extends ServerConsumerImpl {
       }
    }
 
-   @Override
-   protected void updateDeliveryCountForCanceledRef(MessageReference ref, boolean failed) {
-      //activemq5 doesn't decrease the count
-      //when not failed.
-      if (failed) {
-         ref.decrementDeliveryCount();
-      }
-   }
-
 }
