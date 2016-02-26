@@ -35,6 +35,7 @@ public class AMQServerConsumer extends ServerConsumerImpl {
 
    // TODO-NOW: remove this once unified
    AMQConsumer amqConsumer;
+   boolean isClosing;
 
    public AMQConsumer getAmqConsumer() {
       return amqConsumer;
@@ -65,6 +66,18 @@ public class AMQServerConsumer extends ServerConsumerImpl {
       AMQBrowserDeliverer newBrowserDeliverer = new AMQBrowserDeliverer(this.browserDeliverer);
       newBrowserDeliverer.listener = listener;
       this.browserDeliverer = newBrowserDeliverer;
+   }
+
+   public void closing() {
+      isClosing = true;
+   }
+
+   @Override
+   public HandleStatus handle(final MessageReference ref) throws Exception {
+      if (isClosing) {
+         return HandleStatus.BUSY;
+      }
+      return super.handle(ref);
    }
 
    private class AMQBrowserDeliverer extends BrowserDeliverer {
@@ -171,6 +184,15 @@ public class AMQServerConsumer extends ServerConsumerImpl {
       synchronized (queue) {
          queue.sendToDeadLetterAddress(ref);
          queue.decDelivering();
+      }
+   }
+
+   @Override
+   protected void updateDeliveryCountForCanceledRef(MessageReference ref, boolean failed) {
+      //activemq5 doesn't decrease the count
+      //when not failed.
+      if (failed) {
+         ref.decrementDeliveryCount();
       }
    }
 

@@ -18,6 +18,7 @@ package org.apache.activemq.artemis.core.protocol.openwire.amq;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +91,12 @@ public class AMQServerSession extends ServerSessionImpl {
 
    @Override
    protected void doClose(final boolean failed) throws Exception {
+      Set<ServerConsumer> consumersClone = new HashSet<>(consumers.values());
+      for (ServerConsumer consumer : consumersClone) {
+         AMQServerConsumer amqConsumer = (AMQServerConsumer)consumer;
+         amqConsumer.closing();//prevent redeliver
+      }
+
       synchronized (this) {
          if (tx != null && tx.getXid() == null) {
             ((AMQTransactionImpl) tx).setRollbackForClose();

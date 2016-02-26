@@ -556,12 +556,7 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener {
                }
                else {
                   refs.add(ref);
-                  if (!failed) {
-                     // We don't decrement delivery count if the client failed, since there's a possibility that refs
-                     // were actually delivered but we just didn't get any acks for them
-                     // before failure
-                     ref.decrementDeliveryCount();
-                  }
+                  updateDeliveryCountForCanceledRef(ref, failed);
                }
 
                if (isTrace) {
@@ -574,6 +569,15 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener {
       }
 
       return refs;
+   }
+
+   protected void updateDeliveryCountForCanceledRef(MessageReference ref, boolean failed) {
+      if (!failed) {
+         // We don't decrement delivery count if the client failed, since there's a possibility that refs
+         // were actually delivered but we just didn't get any acks for them
+         // before failure
+         ref.decrementDeliveryCount();
+      }
    }
 
    @Override
