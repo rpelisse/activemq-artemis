@@ -101,7 +101,6 @@ public class BrokerService implements Service {
    private Throwable startException = null;
    private boolean startAsync = false;
    public Set<ConnectorInfo> extraConnectors = new HashSet<>();
-//   public Set<Integer> sslConnectors = new HashSet<>();
 
    private List<TransportConnector> transportConnectors = new ArrayList<>();
    private File dataDirectoryFile;
@@ -591,12 +590,13 @@ public class BrokerService implements Service {
       return port;
    }
 
-   private static boolean checkPort(final int port) {
+   public static boolean checkPort(final int port) {
       ServerSocket ssocket = null;
       try {
          ssocket = new ServerSocket(port);
       }
       catch (Exception e) {
+         LOG.info("port " + port + " is being used.");
          return false;
       }
       finally {

@@ -31,6 +31,7 @@ import org.apache.activemq.TransportLoggerSupport;
 import org.apache.activemq.artemiswrapper.ArtemisBrokerHelper;
 import org.apache.activemq.broker.BrokerRegistry;
 import org.apache.activemq.broker.BrokerService;
+import org.apache.activemq.broker.artemiswrapper.ArtemisBrokerWrapper;
 import org.apache.activemq.openwire.OpenWireFormat;
 import org.apache.activemq.transport.*;
 import org.apache.activemq.util.IOExceptionSupport;
@@ -44,12 +45,7 @@ public class TcpTransportFactory extends TransportFactory {
 
    private static final Logger LOG = LoggerFactory.getLogger(TcpTransportFactory.class);
 
-   private static volatile String brokerService = null;
-
-   //if a broker is started or stopped it should set this.
-   public static void setBrokerName(String name) {
-      brokerService = name;
-   }
+   private static volatile InternalServiceInfo brokerService = null;
 
    @Override
    public Transport doConnect(URI location) throws Exception {
@@ -59,11 +55,11 @@ public class TcpTransportFactory extends TransportFactory {
       URI location1 = URISupport.createRemainingURI(location, Collections.EMPTY_MAP);
 
       LOG.info("deciding whether starting an internal broker: " + brokerService + " flag: " + BrokerService.disableWrapper);
-      if (brokerService == null && !BrokerService.disableWrapper) {
+      if (brokerService == null && !BrokerService.disableWrapper && BrokerService.checkPort(location1.getPort())) {
 
          LOG.info("starting internal broker: " + location1);
          ArtemisBrokerHelper.startArtemisBroker(location1);
-         brokerService = location.toString();
+         brokerService = new InternalServiceInfo(location.toString());
 
          if (brokerId != null) {
             BrokerRegistry.getInstance().bind(brokerId, ArtemisBrokerHelper.getBroker());
@@ -185,6 +181,7 @@ public class TcpTransportFactory extends TransportFactory {
 
    //remember call this if the test is using the internal broker.
    public static void clearService() {
+      LOG.info("#### clearing internal service " + brokerService);
       if (brokerService != null) {
          try {
             ArtemisBrokerHelper.stopArtemisBroker();
@@ -195,6 +192,23 @@ public class TcpTransportFactory extends TransportFactory {
          finally {
             brokerService = null;
          }
+      }
+   }
+
+   //added createTime for debugging
+   private static class InternalServiceInfo {
+      private String internalService;
+      private long createTime;
+
+      public InternalServiceInfo(String brokerService) {
+         this.internalService = brokerService;
+         this.createTime = System.currentTimeMillis();
+         LOG.info("just created " + this);
+      }
+
+      @Override
+      public String toString() {
+         return internalService + "@" + createTime;
       }
    }
 }

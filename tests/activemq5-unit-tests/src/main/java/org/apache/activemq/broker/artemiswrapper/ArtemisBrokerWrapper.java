@@ -96,7 +96,7 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
       }
       if (this.bservice.enableSsl()) {
          //default
-         addServerAcceptor(serverConfig, new BrokerService.ConnectorInfo(61611));
+         addServerAcceptor(serverConfig, new BrokerService.ConnectorInfo(61611, true));
       }
 
       for (BrokerService.ConnectorInfo info : bservice.extraConnectors) {
