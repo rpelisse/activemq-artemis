@@ -34,7 +34,9 @@ import org.apache.activemq.artemis.core.protocol.openwire.OpenWireUtil;
 import org.apache.activemq.artemis.core.server.QueueQueryResult;
 import org.apache.activemq.artemis.core.server.ServerMessage;
 import org.apache.activemq.artemis.core.server.SlowConsumerDetectionListener;
+import org.apache.activemq.artemis.core.settings.impl.AddressSettings;
 import org.apache.activemq.artemis.jms.client.ActiveMQDestination;
+import org.apache.activemq.command.ConsumerControl;
 import org.apache.activemq.command.ConsumerId;
 import org.apache.activemq.command.ConsumerInfo;
 import org.apache.activemq.command.MessageAck;
@@ -136,6 +138,17 @@ public class AMQConsumer implements BrowserListener {
       else {
          SimpleString queueName = new SimpleString("jms.queue." + this.actualDest.getPhysicalName());
          coreSession.createConsumer(nativeId, queueName, selector, info.isBrowser(), false, -1);
+         AddressSettings addrSettings = session.getCoreServer().getAddressSettingsRepository().getMatch(queueName.toString());
+         if (addrSettings != null) {
+            //see PolicyEntry
+            if (prefetchSize != 0 && addrSettings.getQueuePrefetch() == 0) {
+               //sends back a ConsumerControl
+               ConsumerControl cc = new ConsumerControl();
+               cc.setConsumerId(info.getConsumerId());
+               cc.setPrefetch(0);
+               session.getConnection().dispatch(cc);
+            }
+         }
       }
 
       if (info.isBrowser()) {

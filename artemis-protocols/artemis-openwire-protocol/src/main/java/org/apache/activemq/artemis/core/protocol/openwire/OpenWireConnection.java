@@ -388,7 +388,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       dispatchAsync(ce);
    }
 
-   protected void dispatch(Command command) throws IOException {
+   public void dispatch(Command command) throws IOException {
       this.physicalSend(command);
    }
 

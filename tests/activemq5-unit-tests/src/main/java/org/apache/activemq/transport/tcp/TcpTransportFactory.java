@@ -52,10 +52,17 @@ public class TcpTransportFactory extends TransportFactory {
       //here check broker, if no broker, we start one
       Map<String, String> params = URISupport.parseParameters(location);
       String brokerId = params.remove("invmBrokerId");
+      boolean autoCreate = true;
+      String create = params.remove("create");
+      if (create != null)
+      {
+         autoCreate = "true".equals(create);
+      }
+
       URI location1 = URISupport.createRemainingURI(location, Collections.EMPTY_MAP);
 
       LOG.info("deciding whether starting an internal broker: " + brokerService + " flag: " + BrokerService.disableWrapper);
-      if (brokerService == null && !BrokerService.disableWrapper && BrokerService.checkPort(location1.getPort())) {
+      if (autoCreate && brokerService == null && !BrokerService.disableWrapper && BrokerService.checkPort(location1.getPort())) {
 
          LOG.info("starting internal broker: " + location1);
          ArtemisBrokerHelper.startArtemisBroker(location1);

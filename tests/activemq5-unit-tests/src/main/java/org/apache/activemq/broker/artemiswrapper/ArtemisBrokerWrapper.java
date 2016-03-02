@@ -210,6 +210,8 @@ public class ArtemisBrokerWrapper extends ArtemisBrokerBase {
                settings.setAddressFullMessagePolicy(AddressFullMessagePolicy.FAIL);
             }
          }
+         int queuePrefetch = entry.getQueuePrefetch();
+         settings.setQueuePrefetch(queuePrefetch);
       }
 
       PolicyEntry defaultEntry = policyMap.getDefaultEntry();

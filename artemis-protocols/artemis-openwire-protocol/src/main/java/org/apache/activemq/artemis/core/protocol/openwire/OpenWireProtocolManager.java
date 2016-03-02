@@ -524,7 +524,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
 
    public void sendBrokerInfo(OpenWireConnection connection) throws Exception {
       BrokerInfo brokerInfo = new BrokerInfo();
-      brokerInfo.setBrokerName(server.getIdentity());
+      brokerInfo.setBrokerName(getBrokerName());
       brokerInfo.setBrokerId(new BrokerId("" + server.getNodeID()));
       brokerInfo.setPeerBrokerInfos(null);
       brokerInfo.setFaultTolerantConfiguration(false);
