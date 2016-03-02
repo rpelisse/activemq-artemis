@@ -19,7 +19,6 @@ package org.apache.activemq.artemis.core.protocol.openwire;
 import javax.jms.InvalidClientIDException;
 import javax.jms.InvalidDestinationException;
 import javax.jms.JMSSecurityException;
-import javax.jms.ResourceAllocationException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -270,22 +269,26 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       catch (Exception e) {
          ActiveMQServerLogger.LOGGER.debug(e);
 
-         Response resp;
-         if (e instanceof ActiveMQSecurityException) {
-            resp = new ExceptionResponse(new JMSSecurityException(e.getMessage()));
-         }
-         else if (e instanceof ActiveMQNonExistentQueueException) {
-            resp = new ExceptionResponse(new InvalidDestinationException(e.getMessage()));
-         }
-         else {
-            resp = new ExceptionResponse(e);
-         }
-         try {
-            dispatch(resp);
-         }
-         catch (IOException e2) {
-            ActiveMQServerLogger.LOGGER.warn(e.getMessage(), e2);
-         }
+         sendException(e);
+      }
+   }
+
+   public void sendException(Exception e) {
+      Response resp;
+      if (e instanceof ActiveMQSecurityException) {
+         resp = new ExceptionResponse(new JMSSecurityException(e.getMessage()));
+      }
+      else if (e instanceof ActiveMQNonExistentQueueException) {
+         resp = new ExceptionResponse(new InvalidDestinationException(e.getMessage()));
+      }
+      else {
+         resp = new ExceptionResponse(e);
+      }
+      try {
+         dispatch(resp);
+      }
+      catch (IOException e2) {
+         ActiveMQServerLogger.LOGGER.warn(e.getMessage(), e2);
       }
    }
 
@@ -371,75 +374,18 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
    }
 
-   public void dispatchAsync(Command message) {
-      if (!stopping.get()) {
-         dispatchSync(message);
-      }
-      else {
-         if (message.isMessageDispatch()) {
-            MessageDispatch md = (MessageDispatch) message;
-            TransmitCallback sub = md.getTransmitCallback();
-            protocolManager.postProcessDispatch(md);
-            if (sub != null) {
-               sub.onFailure();
-            }
-         }
-      }
+   public void dispatchAsync(Command message) throws Exception {
+      dispatchSync(message);
    }
 
-   public void dispatchSync(Command message) {
-      try {
-         processDispatch(message);
-      }
-      catch (IOException e) {
-         serviceExceptionAsync(e);
-      }
+   public void dispatchSync(Command message) throws Exception {
+      processDispatch(message);
    }
 
-   public void serviceExceptionAsync(final IOException e) {
-      if (asyncException.compareAndSet(false, true)) {
-         // TODO: Why this is not through an executor?
-         new Thread("Async Exception Handler") {
-            @Override
-            public void run() {
-               serviceException(e);
-            }
-         }.start();
-      }
-   }
-
-   public void serviceException(Throwable e) {
-      // are we a transport exception such as not being able to dispatch
-      // synchronously to a transport
-      if (e instanceof IOException) {
-         serviceTransportException((IOException) e);
-      }
-      else if (!stopping.get() && !inServiceException) {
-         inServiceException = true;
-         try {
-            ConnectionError ce = new ConnectionError();
-            ce.setException(e);
-            dispatchAsync(ce);
-         }
-         finally {
-            inServiceException = false;
-         }
-      }
-   }
-
-   public void serviceTransportException(IOException e) {
-      /*
-       * deal with it later BrokerService bService =
-       * connector.getBrokerService(); if (bService.isShutdownOnSlaveFailure())
-       * { if (brokerInfo != null) { if (brokerInfo.isSlaveBroker()) {
-       * LOG.error("Slave has exception: {} shutting down master now.",
-       * e.getMessage(), e); try { doStop(); bService.stop(); } catch (Exception
-       * ex) { LOG.warn("Failed to stop the master", ex); } } } } if
-       * (!stopping.get() && !pendingStop) { transportException.set(e); if
-       * (TRANSPORTLOG.isDebugEnabled()) { TRANSPORTLOG.debug(this + " failed: "
-       * + e, e); } else if (TRANSPORTLOG.isWarnEnabled() && !expected(e)) {
-       * TRANSPORTLOG.warn(this + " failed: " + e); } stopAsync(); }
-       */
+   public void serviceException(Throwable e) throws Exception {
+      ConnectionError ce = new ConnectionError();
+      ce.setException(e);
+      dispatchAsync(ce);
    }
 
    protected void dispatch(Command command) throws IOException {
@@ -570,7 +516,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       }
    }
 
-   private void disconnect(ActiveMQException me, String reason, boolean fail) {
+   private void disconnect(ActiveMQException me, String reason, boolean fail)  {
 
       if (context == null || destroyed) {
          return;
@@ -596,8 +542,12 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       if (command != null && command.isResponseRequired()) {
          Response lastResponse = new Response();
          lastResponse.setCorrelationId(command.getCommandId());
-         dispatchSync(lastResponse);
-         context.setDontSendReponse(true);
+         try {
+            dispatchSync(lastResponse);
+         }
+         catch (Throwable e) {
+            ActiveMQServerLogger.LOGGER.warn(e.getMessage(), e);
+         }
       }
    }
 
@@ -632,12 +582,10 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       return this.context;
    }
 
-   public void updateClient(ConnectionControl control) {
-      //      if (!destroyed && context.isFaultTolerant()) {
+   public void updateClient(ConnectionControl control) throws Exception {
       if (protocolManager.isUpdateClusterClients()) {
          dispatchAsync(control);
       }
-      //      }
    }
 
    public AMQConnectionContext initContext(ConnectionInfo info) {
@@ -1063,9 +1011,16 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
       @Override
       public Response processCommitTransactionOnePhase(TransactionInfo info) throws Exception {
-         protocolManager.commitTransactionOnePhase(info);
-         TransactionId txId = info.getTransactionId();
-         txMap.remove(txId);
+         new Exception("commit").printStackTrace();
+         try {
+            protocolManager.commitTransactionOnePhase(info);
+            TransactionId txId = info.getTransactionId();
+            txMap.remove(txId);
+         }
+         catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+         }
 
          return null;
       }
@@ -1150,32 +1105,10 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
          AMQSession session = getSession(producerId.getParentId());
 
-         SendingResult result = session.send(producerExchange, messageSend, sendProducerAck);
-         if (result.isBlockNextSend()) {
-            if (!context.isNetworkConnection() && result.isSendFailIfNoSpace()) {
-               // TODO see logging
-               throw new ResourceAllocationException("Usage Manager Memory Limit reached. Stopping producer (" + producerId + ") to prevent flooding " + result.getBlockingAddress() + "." + " See http://activemq.apache.org/producer-flow-control.html for more info");
-            }
-
-            if (producerInfo.getWindowSize() > 0 || messageSend.isResponseRequired()) {
-               //in that case don't send the response
-               //this will force the client to wait until
-               //the response is got.
-               context.setDontSendReponse(true);
-            }
-            else {
-               //hang the connection until the space is available
-               session.blockingWaitForSpace(producerExchange, result);
-            }
-         }
-         else if (sendProducerAck) {
-            // TODO-now: send through OperationContext
-            ProducerAck ack = new ProducerAck(producerInfo.getProducerId(), messageSend.getSize());
-            OpenWireConnection.this.dispatchAsync(ack);
-         }
-
+         session.send(producerInfo, messageSend, sendProducerAck);
          return null;
       }
+
 
       @Override
       public Response processMessageAck(MessageAck ack) throws Exception {

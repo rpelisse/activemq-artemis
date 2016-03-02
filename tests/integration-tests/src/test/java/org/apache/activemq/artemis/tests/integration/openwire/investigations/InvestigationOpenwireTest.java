@@ -29,6 +29,7 @@ import javax.transaction.xa.XAResource;
 import java.util.Collection;
 import java.util.LinkedList;
 
+import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.artemis.tests.integration.openwire.BasicOpenWireTest;
 import org.junit.Assert;
 import org.junit.Test;
@@ -48,6 +49,30 @@ public class InvestigationOpenwireTest extends BasicOpenWireTest {
             Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
             sessions.add(session);
          }
+
+         connection.close();
+
+         System.err.println("Done!!!");
+      }
+      catch (Exception e) {
+         e.printStackTrace();
+      }
+   }
+
+   @Test
+   public void testProducerFlowControl() throws Exception {
+      try {
+
+         ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(urlString);
+
+         factory.setProducerWindowSize(1024 * 64);
+
+         Connection connection = factory.createConnection();
+         Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
+         Queue queue = session.createQueue(queueName);
+         MessageProducer producer = session.createProducer(queue);
+         producer.send(session.createTextMessage("test"));
+
 
          connection.close();
 
@@ -108,6 +133,7 @@ public class InvestigationOpenwireTest extends BasicOpenWireTest {
          MessageProducer producer = session.createProducer(queue);
          MessageConsumer consumer = session.createConsumer(queue);
          producer.send(session.createTextMessage("test"));
+         producer.send(session.createTextMessage("test2"));
          connection.start();
          Assert.assertNull(consumer.receive(1000));
          session.rollback();
@@ -128,6 +154,7 @@ public class InvestigationOpenwireTest extends BasicOpenWireTest {
          e.printStackTrace();
       }
    }
+
 
 
    @Test

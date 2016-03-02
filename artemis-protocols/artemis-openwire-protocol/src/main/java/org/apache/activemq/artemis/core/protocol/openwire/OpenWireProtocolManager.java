@@ -40,6 +40,7 @@ import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQProducerBrokerE
 import org.apache.activemq.artemis.core.protocol.openwire.amq.AMQSession;
 import org.apache.activemq.artemis.core.remoting.impl.netty.NettyServerConnection;
 import org.apache.activemq.artemis.core.server.ActiveMQServer;
+import org.apache.activemq.artemis.core.server.ActiveMQServerLogger;
 import org.apache.activemq.artemis.core.server.cluster.ClusterConnection;
 import org.apache.activemq.artemis.core.server.cluster.ClusterManager;
 import org.apache.activemq.artemis.spi.core.protocol.ConnectionEntry;
@@ -192,7 +193,13 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
 
       for (OpenWireConnection c : this.connections) {
          ConnectionControl control = newConnectionControl();
-         c.updateClient(control);
+         try {
+            c.updateClient(control);
+         }
+         catch (Exception e) {
+            ActiveMQServerLogger.LOGGER.warn(e.getMessage(), e);
+            c.sendException(e);
+         }
       }
    }
 
@@ -365,7 +372,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
          context.setProducerFlowControl(false);
          AMQSession sess = context.getConnection().getAdvisorySession();
          if (sess != null) {
-            sess.send(producerExchange, advisoryMessage, false);
+            sess.send(producerExchange.getProducerState().getInfo(), advisoryMessage, false);
          }
       }
       finally {
@@ -515,7 +522,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
       server.destroyQueue(subQueueName);
    }
 
-   public void sendBrokerInfo(OpenWireConnection connection) {
+   public void sendBrokerInfo(OpenWireConnection connection) throws Exception {
       BrokerInfo brokerInfo = new BrokerInfo();
       brokerInfo.setBrokerName(server.getIdentity());
       brokerInfo.setBrokerId(new BrokerId("" + server.getNodeID()));
@@ -525,7 +532,7 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
 
       //cluster support yet to support
       brokerInfo.setPeerBrokerInfos(null);
-      connection.dispatchAsync(brokerInfo);
+      connection.dispatch(brokerInfo);
    }
 
    public void setRebalanceClusterClients(boolean rebalance) {
