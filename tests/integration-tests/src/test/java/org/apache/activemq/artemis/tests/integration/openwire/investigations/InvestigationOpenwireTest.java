@@ -26,6 +26,7 @@ import javax.jms.TextMessage;
 import javax.jms.XAConnection;
 import javax.jms.XASession;
 import javax.transaction.xa.XAResource;
+import javax.transaction.xa.Xid;
 import java.util.Collection;
 import java.util.LinkedList;
 
@@ -206,6 +207,33 @@ public class InvestigationOpenwireTest extends BasicOpenWireTest {
             session.getXAResource().start(newXID(), XAResource.TMNOFLAGS);
             sessions.add(session);
          }
+
+         connection.close();
+
+         System.err.println("Done!!!");
+      }
+      catch (Exception e) {
+         e.printStackTrace();
+      }
+   }
+
+   @Test
+   public void testXAPrepare() throws Exception {
+      try {
+
+         XAConnection connection = xaFactory.createXAConnection();
+         //      Thread.sleep(5000);
+
+
+         XASession session = connection.createXASession();
+
+         Xid xid = newXID();
+         session.getXAResource().start(xid, XAResource.TMNOFLAGS);
+         Queue queue = session.createQueue(queueName);
+         MessageProducer producer = session.createProducer(queue);
+         producer.send(session.createTextMessage("hello"));
+         session.getXAResource().end(xid, XAResource.TMSUCCESS);
+         session.getXAResource().prepare(xid);
 
          connection.close();
 
