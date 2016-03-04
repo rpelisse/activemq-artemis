@@ -224,7 +224,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
 
             try {
                setLastCommand(command);
-               response = command.visit(new CommandProcessor());
+               response = command.visit(commandProcessorInstance);
             }
             catch (Exception e) {
                if (responseRequired) {
@@ -835,10 +835,13 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
    }
 
 
+   CommandProcessor commandProcessorInstance = new CommandProcessor();
+
+
    // This will listen for commands throught the protocolmanager
    public class CommandProcessor implements CommandVisitor {
 
-      public AMQConnectionContext getContext() {
+      private AMQConnectionContext getContext() {
          return OpenWireConnection.this.getContext();
       }
 
