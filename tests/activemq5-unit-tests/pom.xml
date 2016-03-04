@@ -49,6 +49,14 @@
 
    <dependencies>
 
+      <!-- I imported this to get the ThreadLeakCheck -->
+      <dependency>
+         <groupId>org.apache.activemq</groupId>
+         <artifactId>artemis-server</artifactId>
+         <version>${project.version}</version>
+         <type>test-jar</type>
+      </dependency>
+
       <dependency>
          <groupId>org.apache.activemq</groupId>
          <artifactId>activemq-client</artifactId>
@@ -336,6 +344,7 @@
             </exclusion>
          </exclusions>
       </dependency>
+
        <!--
            JBoss Logging
        -->
