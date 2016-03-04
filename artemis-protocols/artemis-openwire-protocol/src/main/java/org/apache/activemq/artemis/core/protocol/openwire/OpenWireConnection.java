@@ -19,6 +19,7 @@ package org.apache.activemq.artemis.core.protocol.openwire;
 import javax.jms.InvalidClientIDException;
 import javax.jms.InvalidDestinationException;
 import javax.jms.JMSSecurityException;
+import javax.transaction.xa.XAResource;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -77,6 +78,7 @@ import org.apache.activemq.command.DataArrayResponse;
 import org.apache.activemq.command.DestinationInfo;
 import org.apache.activemq.command.ExceptionResponse;
 import org.apache.activemq.command.FlushCommand;
+import org.apache.activemq.command.IntegerResponse;
 import org.apache.activemq.command.KeepAliveInfo;
 import org.apache.activemq.command.Message;
 import org.apache.activemq.command.MessageAck;
@@ -1140,7 +1142,8 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
       @Override
       public Response processPrepareTransaction(TransactionInfo info) throws Exception {
          protocolManager.prepareTransaction(info);
-         return null;
+         //activemq needs a rdonly response
+         return new IntegerResponse(XAResource.XA_RDONLY);
       }
 
       @Override

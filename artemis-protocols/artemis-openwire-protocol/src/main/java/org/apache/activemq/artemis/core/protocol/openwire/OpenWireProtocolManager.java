@@ -17,6 +17,7 @@
 package org.apache.activemq.artemis.core.protocol.openwire;
 
 import javax.jms.InvalidClientIDException;
+import javax.transaction.xa.XAException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -487,6 +488,9 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
       if (txSession != null) {
          txSession.rollback(info);
       }
+      else {
+         throw newXAException("Transaction '" + info.getTransactionId() + "' has not been started.", XAException.XAER_NOTA);
+      }
       transactions.remove(info.getTransactionId());
    }
 
@@ -558,4 +562,11 @@ public class OpenWireProtocolManager implements ProtocolManager<Interceptor>, Cl
    public boolean isUpdateClusterClientsOnRemove() {
       return this.updateClusterClientsOnRemove;
    }
+
+   public static XAException newXAException(String s, int errorCode) {
+      XAException xaException = new XAException(s + " " + "xaErrorCode:" + errorCode);
+      xaException.errorCode = errorCode;
+      return xaException;
+   }
+
 }
