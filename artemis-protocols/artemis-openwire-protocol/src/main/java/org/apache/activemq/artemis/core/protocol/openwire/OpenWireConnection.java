@@ -841,7 +841,7 @@ public class OpenWireConnection extends AbstractRemotingConnection implements Se
    // This will listen for commands throught the protocolmanager
    public class CommandProcessor implements CommandVisitor {
 
-      private AMQConnectionContext getContext() {
+      public AMQConnectionContext getContext() {
          return OpenWireConnection.this.getContext();
       }
 
